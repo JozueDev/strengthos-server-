@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <!-- Chart.js para Estadísticas de Progreso -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .admin-container {
+            padding-top: 120px;
+            padding-bottom: 60px;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+        }
+
+        .admin-form {
+            position: sticky;
+            top: 120px;
+        }
+
+        .clients-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-secondary);
+        }
+
+        .clients-table th {
+            text-align: left;
+            padding: 16px;
+            background: rgba(var(--primary-rgb), 0.2);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom: 2px solid rgba(var(--primary-rgb), 0.3);
+        }
+
+        .clients-table td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .clients-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        .header-title {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-form {
+                position: static;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo-container">
+                <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
+                <span class="logo-text">StrengthOS Admin</span>
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Volver a la Web</a>
+            </div>
+            <button class="mobile-menu-toggle">☰</button>
+        </div>
+    </nav>
+
+    <div class="container section-padding">
+        <div class="header-title animated-element animate-in">
+            <h1 class="hero-title">Gestión de Clientes</h1>
+            <p class="section-subtitle">Añade y administra los accesos de tus atletas a la App.</p>
+        </div>
+
+        <div class="admin-container">
+            <!-- Formulario de Nuevo Cliente -->
+            <div class="admin-form animated-element animate-in">
+                <div class="login-container glass-card">
+                    <h3 class="login-title">Añadir Nuevo Cliente</h3>
+                    <form id="create-client-form">
+                        <div class="input-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Número de Usuario</label>
+                            <input type="text" disabled value="Se generará en orden (ej: 0001, 0002)"
+                                style="opacity: 0.6; cursor: not-allowed;">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Contraseña Provisional</label>
+                            <input type="password" id="contrasena" placeholder="Contraseña segura" required>
+                        </div>
+                        <button type="submit" class="btn-primary w-100">Crear Cliente</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de Clientes Activos -->
+            <div class="clients-list animated-element animate-in" style="animation-delay: 0.2s;">
+                <div class="glass-card">
+                    <h3 class="login-title" style="text-align: left; margin-bottom: 20px;">Atletas Registrados</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="clients-table">
+                            <thead>
+                                <tr>
+                                    <th>ID / Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-tbody">
+                                <td colspan="4" style="text-align: center;">Cargando clientes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Routine Editor Modal with Calendar -->
+    <div id="routine-editor-modal" class="modal-overlay">
+        <div class="modal-container glass-card" style="max-width: 800px; width: 95%;">
+            <span class="close-modal" id="close-routine-modal">&times;</span>
+            <h3 class="login-title" id="routine-editor-title">Asignar Rutinas</h3>
+
+            <p class="body-text" style="margin-bottom: 20px; font-size: 0.9rem; text-align: center;">
+                Haz clic en cualquier día para programar o modificar su entrenamiento.
+            </p>
+
+            <!-- Calendar View -->
+            <div id="admin-calendar-view">
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button class="calendar-nav-btn" id="admin-prev-month" type="button">&lt;</button>
+                        <h4 id="admin-month-year-display">Calendario</h4>
+                        <button class="calendar-nav-btn" id="admin-next-month" type="button">&gt;</button>
+                    </div>
+                    <div class="calendar-grid" style="margin-bottom: 10px;">
+                        <div class="calendar-day-name">Dom</div>
+                        <div class="calendar-day-name">Lun</div>
+                        <div class="calendar-day-name">Mar</div>
+                        <div class="calendar-day-name">Mié</div>
+                        <div class="calendar-day-name">Jue</div>
+                        <div class="calendar-day-name">Vie</div>
+                        <div class="calendar-day-name">Sáb</div>
+                    </div>
+                    <div class="calendar-grid" id="admin-calendar-days">
+                        <!-- Javascript inyectará los días aquí -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor View (Hidden by default) -->
+            <div id="admin-editor-view"
+                style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="color: var(--primary-100);" id="editor-date-title">Rutina del Día</h4>
+                    <button type="button" id="btn-back-calendar" class="btn-primary"
+                        style="padding: 6px 12px; font-size: 0.8rem; background: transparent; box-shadow: none; border: 1px solid var(--primary-500);">Volver
+                        al Calendario</button>
+                </div>
+
+                <form id="routine-editor-form">
+                    <input type="hidden" id="routine-date">
+
+
+                    <div class="input-group">
+                        <textarea id="routine-text" rows="8"
+                            placeholder="Ej:&#10;Día 1: Empuje&#10;• Press de Banca 4x10&#10;• Elevaciones laterales 3x15..."
+                            style="width: 100%; padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical;"></textarea>
+                    </div>
+
+                    <!-- Client Notes Section -->
+                    <div class="input-group" id="client-notes-container" style="display: none; margin-top: 20px;">
+                        <label style="color: var(--primary-200);">Progreso / Notas del Atleta:</label>
+                        <div id="admin-client-notes-text"
+                            style="width: 100%; padding: 16px; background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; color: var(--text-secondary); font-family: inherit; font-size: 0.95rem; white-space: pre-wrap;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn-primary" style="flex: 2;">Guardar Rutina</button>
+                        <button type="button" id="btn-delete-routine" class="btn-primary"
+                            style="flex: 1; background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); color: #ef4444;">Limpiar
+                            Día</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal Progreso Atleta -->
+    <div id="progress-viewer-modal" class="modal-overlay">
+        <div class="modal-container glass-card" style="max-width: 800px; width: 95%;">
+            <span class="close-modal" id="close-progress-modal">&times;</span>
+            <h3 class="login-title" id="progress-viewer-title">Progreso del Atleta</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
+                <div
+                    style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h4 style="color: var(--primary-100); margin-bottom: 15px;">Estadísticas Generales</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 8px;"><span style="color:var(--text-tertiary);">Semanas
+                            Activo:</span> <span id="admin-prog-weeks">--</span></p>
+                    <p style="font-size: 0.9rem;"><span style="color:var(--text-tertiary);">Rutinas Completadas:</span>
+                        <span id="admin-prog-routines">--</span>
+                    </p>
+                </div>
+            </div>
+
+            <h4 style="color: var(--primary-200); margin-bottom: 15px;">Evolución de Ejercicios (Gráficos)</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px;">Selecciona el mes a
+                revisar:</p>
+            <select id="admin-monthly-stats-select"
+                style="width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; margin-bottom: 25px;">
+                <option value="">Selecciona un mes...</option>
+            </select>
+
+            <div id="admin-progress-stats-container"
+                style="display:flex; flex-direction:column; gap:30px; max-height: 500px; overflow-y: auto; padding-right: 15px;">
+                <!-- Js inyecta progresión -->
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script Minimalista para cargar partículas y nav -->
+    <script src="script.js?v=05001"></script>
+    <script src="admin.js?v=05001"></script>
+</body>
+
+</html>

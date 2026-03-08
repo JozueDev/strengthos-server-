@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrengthOS | Entrena mejor. Sé más fuerte.</title>
+    <meta name="description" content="App de entrenamiento personalizado. Accede a tu calendario y rutinas detalladas.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar" id="navbar">
+        <div class="container nav-content">
+            <a href="#" class="logo-container">
+                <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Características</a>
+                <a href="#about" class="nav-link">Sobre Mí</a>
+                <a href="#login" class="nav-link">Acceso Clientes</a>
+            </div>
+            <button class="mobile-menu-toggle">☰</button>
+        </div>
+    </nav>
+
+    <header class="hero" id="login">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <div class="hero-label">⚡ Acceso Exclusivo</div>
+                <h1 class="hero-title">StrengthOS: La App de Entrenamiento</h1>
+                <p class="hero-subtitle">Entrena mejor. Sé más fuerte. Accede a tu calendario y rutinas explicadas paso
+                    a
+                    paso.</p>
+
+                <div class="login-container glass-card hover-lift">
+                    <h3 class="login-title">Iniciar Sesión</h3>
+                    <form class="login-form">
+                        <div class="input-group">
+                            <label>Número de Usuario</label>
+                            <input type="text" placeholder="Ej: 10045" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Contraseña</label>
+                            <input type="password" placeholder="Tu contraseña" required>
+                        </div>
+                        <button type="submit" class="btn-primary w-100">Acceder a la App</button>
+                    </form>
+                </div>
+            </div>
+
+
+        </div>
+    </header>
+
+    <section id="features" class="features section-padding">
+        <div class="container">
+            <div class="section-header animated-element">
+                <h2 class="section-title">Todo lo que necesitas en una App</h2>
+                <p class="section-subtitle">Diseñada exclusivamente para que mis clientes lleven su entrenamiento al
+                    siguiente nivel.</p>
+            </div>
+
+            <div class="services-grid">
+                <!-- Servicio 2 -->
+                <div class="service-card-flip animated-element">
+                    <div class="service-card-inner">
+                        <div class="service-card-front">
+                            <img src="images/service_2.png" alt="Calendario" class="service-image">
+                            <div class="service-overlay">
+                                <h3 class="service-title-front">Calendario de Entrenamiento</h3>
+                            </div>
+                        </div>
+                        <div class="service-card-back glass-card">
+                            <h3 class="service-title-back">Calendario</h3>
+                            <p class="service-description">Tu rutina día a día. Sabe exactamente qué toca entrenar hoy,
+                                mañana y toda la semana con una vista clara.</p>
+                            <div class="service-features">
+                                <span class="feature-tag">Planificación</span>
+                                <span class="feature-tag">Notificaciones</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Servicio 3 -->
+                <div class="service-card-flip animated-element">
+                    <div class="service-card-inner">
+                        <div class="service-card-front">
+                            <img src="images/service_3.png" alt="Rutinas" class="service-image">
+                            <div class="service-overlay">
+                                <h3 class="service-title-front">Rutinas Detalladas</h3>
+                            </div>
+                        </div>
+                        <div class="service-card-back glass-card">
+                            <h3 class="service-title-back">Rutinas Detalladas</h3>
+                            <p class="service-description">Cada ejercicio viene con series, repeticiones, descansos y
+                                notas específicas para que no dejes nada al azar.</p>
+                            <div class="service-features">
+                                <span class="feature-tag">Precisión</span>
+                                <span class="feature-tag">Notas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Servicio 5 -->
+                <div class="service-card-flip animated-element">
+                    <div class="service-card-inner">
+                        <div class="service-card-front">
+                            <img src="images/service_5.png" alt="Progreso" class="service-image">
+                            <div class="service-overlay">
+                                <h3 class="service-title-front">Seguimiento de Progreso</h3>
+                            </div>
+                        </div>
+                        <div class="service-card-back glass-card">
+                            <h3 class="service-title-back">Tu Evolución</h3>
+                            <p class="service-description">Visualiza tus mejoras de fuerza y resistencia a lo largo del
+                                tiempo con gráficos intuitivos.</p>
+                            <div class="service-features">
+                                <span class="feature-tag">Gráficos</span>
+                                <span class="feature-tag">RM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="about section-padding">
+        <div class="container">
+            <div class="about-grid animated-element">
+                <div class="about-image-wrapper">
+                    <div class="glow-bg"></div>
+                    <img src="images/about_image.png" alt="Sobre mi" class="about-image">
+                </div>
+                <div class="about-content">
+                    <h2 class="section-title">Sobre Mí</h2>
+                    <p class="body-large">Mi misión es simple: quiero que entrenes de verdad. Sin rutinas genéricas, sin
+                        sentirte perdido en el gimnasio.</p>
+                    <p class="body-text">Con StrengthOS, he creado la herramienta definitiva para mis clientes. No es
+                        solo un PDF o una hoja de cálculo; es una experiencia inmersiva donde tendrás tu calendario de
+                        entrenamiento claro y rutinas detalladas.</p>
+                    <a href="#login" class="btn-primary" style="display:inline-block; margin-top:20px;">Empieza a
+                        Entrenar</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="rm-calculator" class="calculator section-padding"
+        style="background: rgba(var(--primary-rgb), 0.05); border-top: 1px solid rgba(var(--primary-rgb), 0.1);">
+        <div class="container">
+            <div class="section-header animated-element">
+                <h2 class="section-title">Calculadora 1RM</h2>
+                <p class="section-subtitle">Calcula tu repetición máxima teórica con la fórmula de Epley y ajusta tus
+                    cargas.</p>
+            </div>
+            <div class="calculator-container glass-card animated-element" style="max-width: 500px; margin: 0 auto;">
+                <form id="epley-form" class="login-form">
+                    <div class="input-group">
+                        <label>Peso levantado</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="calc-weight" placeholder="Ej: 100" required min="1" step="any"
+                                style="flex: 1;">
+                            <select id="calc-unit"
+                                style="padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: var(--text-primary); font-family: inherit; font-size: 1rem;">
+                                <option value="kg" style="background: var(--bg-tertiary);">kg</option>
+                                <option value="lb" style="background: var(--bg-tertiary);">lb</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Repeticiones (1-30)</label>
+                        <input type="number" id="calc-reps" placeholder="Ej: 5" required min="1" max="30">
+                    </div>
+                    <button type="submit" class="btn-primary w-100">Calcular 1RM</button>
+                </form>
+                <div id="calc-result" class="calc-result"
+                    style="display: none; margin-top: 24px; text-align: center; padding-top: 20px; border-top: 1px solid rgba(var(--primary-rgb), 0.2);">
+                    <h3 style="color: var(--primary-200); margin-bottom: 8px;">Tu 1RM Estimado:</h3>
+                    <div id="rm-value"
+                        style="font-size: 3rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #fff; margin-bottom: 8px;">
+                        --</div>
+                    <p style="color: var(--text-tertiary); font-size: 0.875rem;">Fórmula: Peso × (1 + 0.0333 × Reps)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <img src="images/logo.png" alt="StrengthOS" class="footer-logo">
+                    <p class="footer-tagline">Entrena mejor. Sé más fuerte.</p>
+                </div>
+                <div class="footer-links">
+
+                    <a href="#login">Acceso Clientes</a>
+                    <a href="#features">Características</a>
+                    <a href="#about">Sobre Mí</a>
+                </div>
+
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 StrengthOS. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js?v=0308"></script>
+</body>
+
+</html>
