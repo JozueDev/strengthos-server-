@@ -1,19 +1,9 @@
 @echo off
-color 0A
-title Servidor StrengthOS Backend
-
-echo ===================================================
-echo   INICIANDO EL SERVIDOR DE BASE DE DATOS STRENGTHOS
-echo ===================================================
+echo Iniciando servidor local de StrengthOS...
 echo.
-echo Por favor, no cierres esta ventana negra mientras 
-echo alguien este usando la web o el panel de control.
+echo 1. Instalando dependencias necesarias (si faltan)...
+pip install -r requirements.txt
 echo.
-echo Para apagar el servidor de forma segura, presiona CTRL+C
-echo.
-
+echo 2. Iniciando la aplicación Flask...
 python app.py
-
-echo.
-echo El servidor se ha detenido por un error.
 pause
