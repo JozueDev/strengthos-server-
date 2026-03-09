@@ -131,14 +131,25 @@ def obtener_clientes():
 @app.route('/api/cliente/<user_id>/perfil', methods=['PUT'])
 def actualizar_perfil(user_id):
     data = request.json
-    peso = data.get('peso', '--')
-    estatura = data.get('estatura', '--')
-    edad = data.get('edad', '--')
+    peso     = data.get('peso', '').strip()
+    estatura = data.get('estatura', '').strip()
+    edad     = data.get('edad', '').strip()
+
+    # Solo actualizar campos que realmente se enviaron (no vacíos)
+    campos = {}
+    if peso:     campos['peso']     = peso
+    if estatura: campos['estatura'] = estatura
+    if edad:     campos['edad']     = edad
+
+    if not campos:
+        return jsonify({"error": "No se enviaron datos para actualizar"}), 400
 
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE clientes SET peso=?, estatura=?, edad=? WHERE user_id=?", (peso, estatura, edad, user_id))
+        set_clause = ", ".join(f"{k}=?" for k in campos)
+        valores = list(campos.values()) + [user_id]
+        cursor.execute(f"UPDATE clientes SET {set_clause} WHERE user_id=?", valores)
         conn.commit()
     except Exception as e:
         conn.close()

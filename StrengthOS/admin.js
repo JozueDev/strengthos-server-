@@ -22,42 +22,97 @@ document.addEventListener("DOMContentLoaded", () => {
                 const card = document.createElement("div");
                 card.className = "client-card";
 
-                // Iniciales del avatar
                 const initials = cliente.nombre.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
                 const encodedNombre = encodeURIComponent(cliente.nombre);
+                let profileLoaded = false;
 
                 if (cliente.user_id === 'admin') {
                     card.innerHTML = `
-                        <div class="client-card-info">
-                            <div class="client-avatar">👑</div>
-                            <div>
-                                <div class="client-name">${cliente.nombre}</div>
-                                <div class="client-id">Administrador</div>
+                        <div class="client-card-top">
+                            <div class="client-card-left">
+                                <div class="client-avatar">👑</div>
+                                <div>
+                                    <div class="client-name">${cliente.nombre}</div>
+                                    <div class="client-id">Administrador</div>
+                                </div>
                             </div>
+                            <span class="admin-badge">Súper Admin</span>
                         </div>
-                        <span class="admin-badge">Súper Admin</span>
                     `;
                 } else {
                     card.innerHTML = `
-                        <div class="client-card-info">
-                            <div class="client-avatar">${initials}</div>
-                            <div>
-                                <div class="client-name">${cliente.nombre}</div>
-                                <div class="client-id">#${cliente.user_id}</div>
+                        <div class="client-card-top">
+                            <div class="client-card-left">
+                                <div class="client-avatar">${initials}</div>
+                                <div style="min-width:0;">
+                                    <div class="client-name">${cliente.nombre}</div>
+                                    <div class="client-id">#${cliente.user_id}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                                <div class="client-actions">
+                                    <a href="admin-routines.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
+                                       class="action-icon-btn" title="Rutinas">📅</a>
+                                    <a href="admin-progress.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
+                                       class="action-icon-btn" title="Progreso">📈</a>
+                                    <button class="action-icon-btn" title="Cambiar contraseña"
+                                        onclick="changePassword('${cliente.user_id}', '${cliente.nombre}')">🔑</button>
+                                    <button class="action-icon-btn danger" title="Eliminar cliente"
+                                        onclick="deleteClient('${cliente.user_id}', '${cliente.nombre}')">🗑</button>
+                                </div>
+                                <button class="btn-expand" title="Ver perfil" data-uid="${cliente.user_id}">▼</button>
                             </div>
                         </div>
-                        <div class="client-actions">
-                            <a href="admin-routines.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
-                               class="action-icon-btn" title="Rutinas">📅</a>
-                            <a href="admin-progress.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
-                               class="action-icon-btn" title="Progreso">📈</a>
-                            <button class="action-icon-btn" title="Cambiar contraseña"
-                                onclick="changePassword('${cliente.user_id}', '${cliente.nombre}')">🔑</button>
-                            <button class="action-icon-btn danger" title="Eliminar cliente"
-                                onclick="deleteClient('${cliente.user_id}', '${cliente.nombre}')">🗑</button>
+                        <div class="client-profile-panel">
+                            <div class="profile-stats">
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" data-field="edad">--</div>
+                                    <div class="profile-stat-label">Edad</div>
+                                </div>
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" data-field="peso">--</div>
+                                    <div class="profile-stat-label">Peso (kg)</div>
+                                </div>
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" data-field="estatura">--</div>
+                                    <div class="profile-stat-label">Estatura (cm)</div>
+                                </div>
+                            </div>
+                            <div class="profile-meta" data-field="fecha">
+                                <span style="opacity:0.5;">Cargando...</span>
+                            </div>
                         </div>
                     `;
+
+                    // Toggle expandir + carga lazy de perfil
+                    const expandBtn = card.querySelector('.btn-expand');
+                    expandBtn.addEventListener('click', async () => {
+                        const isExpanded = card.classList.toggle('expanded');
+
+                        if (isExpanded && !profileLoaded) {
+                            profileLoaded = true;
+                            try {
+                                const res = await fetch(`${API_URL}/cliente/${cliente.user_id}/perfil`);
+                                if (res.ok) {
+                                    const perfil = await res.json();
+                                    card.querySelector('[data-field="edad"]').innerText = perfil.edad && perfil.edad !== '--' ? perfil.edad : '--';
+                                    card.querySelector('[data-field="peso"]').innerText = perfil.peso && perfil.peso !== '--' ? perfil.peso : '--';
+                                    card.querySelector('[data-field="estatura"]').innerText = perfil.estatura && perfil.estatura !== '--' ? perfil.estatura : '--';
+
+                                    let fechaStr = '';
+                                    if (perfil.fecha_registro) {
+                                        const d = new Date(perfil.fecha_registro);
+                                        fechaStr = `Registrado el ${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+                                    }
+                                    card.querySelector('[data-field="fecha"]').innerHTML = `<span style="opacity:0.6;">${fechaStr || 'Sin fecha de registro'}</span>`;
+                                }
+                            } catch (e) {
+                                card.querySelector('[data-field="fecha"]').innerHTML = `<span style="color:#ef4444;opacity:0.7;">Error al cargar perfil</span>`;
+                            }
+                        }
+                    });
                 }
+
                 clientsList.appendChild(card);
             });
         } catch (error) {
@@ -150,6 +205,12 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.innerText = originalText;
             btn.style.opacity = "1";
         }
+    });
+
+    // ── Cerrar Sesión Admin ──────────────────────────────────
+    document.getElementById("admin-logout-btn")?.addEventListener("click", () => {
+        sessionStorage.removeItem("strengthos_user");
+        window.location.href = "index.html";
     });
 
     fetchClients();

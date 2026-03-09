@@ -165,6 +165,117 @@
             font-style: italic;
         }
 
+        /* Panel de perfil expandible */
+        .client-card {
+            display: block;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            transition: background 0.2s, border-color 0.3s;
+        }
+
+        .client-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .client-card.expanded {
+            border-color: rgba(var(--primary-rgb), 0.25);
+            background: rgba(var(--primary-rgb), 0.03);
+        }
+
+        .client-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .client-card-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .client-profile-panel {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 14px;
+            padding-top: 14px;
+        }
+
+        .client-card.expanded .client-profile-panel {
+            display: flex;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .profile-stat {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .profile-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-100);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            line-height: 1;
+        }
+
+        .profile-stat-label {
+            font-size: 0.68rem;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .profile-meta {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Chevron expand */
+        .btn-expand {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            font-family: inherit;
+        }
+
+        .btn-expand:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+        }
+
+        .client-card.expanded .btn-expand {
+            transform: rotate(180deg);
+            border-color: rgba(var(--primary-rgb), 0.3);
+            color: var(--primary-300);
+        }
+
         /* Responsive */
         @media (max-width: 860px) {
             .admin-grid {
@@ -174,10 +285,6 @@
 
             .admin-form-sticky {
                 position: static;
-            }
-
-            .client-card {
-                padding: 14px 16px;
             }
         }
 
@@ -191,6 +298,10 @@
                 height: 34px;
                 font-size: 0.9rem;
             }
+
+            .profile-stat-value {
+                font-size: 0.95rem;
+            }
         }
     </style>
 </head>
@@ -200,12 +311,16 @@
 
     <nav class="navbar scrolled" id="navbar">
         <div class="container nav-content">
-            <a href="index.html" class="logo-container">
+            <a href="admin.html" class="logo-container">
                 <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
                 <span class="logo-text">StrengthOS</span>
             </a>
             <div class="nav-links">
-                <a href="index.html" class="nav-link" style="font-size:0.85rem;">← Web</a>
+                <button id="admin-logout-btn" class="nav-link"
+                    style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.85rem;color:var(--text-secondary);transition:color 0.2s;"
+                    onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-secondary)'">
+                    Cerrar Sesión
+                </button>
             </div>
         </div>
     </nav>
