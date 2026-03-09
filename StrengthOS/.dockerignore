@@ -1,0 +1,11 @@
+__pycache__/
+*.db
+.git/
+.vscode/
+ngrok.exe
+iniciar_servidor.bat
+README.md
+*.log
+venv/
+env/
+.env
