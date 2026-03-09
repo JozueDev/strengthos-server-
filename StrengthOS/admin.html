@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=06009">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <style>
+        body {
+            padding-top: 80px;
+        }
+
+        .admin-page {
+            padding-top: 48px;
+            padding-bottom: 80px;
+        }
+
+        .admin-header {
+            margin-bottom: 48px;
+        }
+
+        .admin-header h1 {
+            font-size: clamp(1.6rem, 4vw, 2.4rem);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .admin-header p {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+
+        .admin-form-sticky {
+            position: sticky;
+            top: 96px;
+        }
+
+        /* Sección de clientes */
+        .clients-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+            padding-left: 4px;
+        }
+
+        /* Card de cada cliente */
+        .client-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .client-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .client-card-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .client-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.3), rgba(var(--primary-rgb), 0.1));
+            border: 1px solid rgba(var(--primary-rgb), 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--primary-200);
+            flex-shrink: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .client-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .client-id {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 2px;
+        }
+
+        /* Botones de acción */
+        .client-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .action-icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .action-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .action-icon-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        /* Admin badge */
+        .admin-badge {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        /* Panel de perfil expandible */
+        .client-card {
+            display: block;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            transition: background 0.2s, border-color 0.3s;
+        }
+
+        .client-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .client-card.expanded {
+            border-color: rgba(var(--primary-rgb), 0.25);
+            background: rgba(var(--primary-rgb), 0.03);
+        }
+
+        .client-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .client-card-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .client-profile-panel {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 14px;
+            padding-top: 14px;
+        }
+
+        .client-card.expanded .client-profile-panel {
+            display: flex;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .profile-stat {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .profile-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-100);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            line-height: 1;
+        }
+
+        .profile-stat-label {
+            font-size: 0.68rem;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .profile-meta {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Chevron expand */
+        .btn-expand {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            font-family: inherit;
+        }
+
+        .btn-expand:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+        }
+
+        .client-card.expanded .btn-expand {
+            transform: rotate(180deg);
+            border-color: rgba(var(--primary-rgb), 0.3);
+            color: var(--primary-300);
+        }
+
+        /* Responsive */
+        @media (max-width: 860px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .admin-form-sticky {
+                position: static;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .client-name {
+                font-size: 0.9rem;
+            }
+
+            .action-icon-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 0.9rem;
+            }
+
+            .profile-stat-value {
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-content">
+            <a href="admin.html" class="logo-container">
+                <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+            <div class="nav-links">
+                <button id="admin-logout-btn" class="nav-link"
+                    style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.85rem;color:var(--text-secondary);transition:color 0.2s;"
+                    onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-secondary)'">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container admin-page">
+
+        <div class="admin-header">
+            <h1>Gestión de Clientes</h1>
+            <p>Administra los accesos y entrenamientos de tus atletas.</p>
+        </div>
+
+        <div class="admin-grid">
+
+            <!-- Formulario Nuevo Cliente -->
+            <div class="admin-form-sticky animated-element animate-in">
+                <div class="glass-card">
+                    <p class="clients-section-title" style="margin-bottom:20px;">Nuevo Cliente</p>
+                    <form id="create-client-form">
+                        <div class="input-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+                        </div>
+                        <div class="input-group">
+                            <label>ID de Usuario</label>
+                            <input type="text" disabled value="Auto-generado" style="opacity:0.4;cursor:not-allowed;">
+                        </div>
+                        <div class="input-group">
+                            <label>Contraseña Provisional</label>
+                            <input type="password" id="contrasena" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn-primary w-100" style="margin-top:4px;">Crear Cliente</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Clientes -->
+            <div class="animated-element animate-in" style="animation-delay:0.1s;">
+                <p class="clients-section-title">Atletas Registrados</p>
+                <div id="clients-list">
+                    <p style="color:var(--text-tertiary);font-size:0.9rem;padding:20px 0;">Cargando atletas...</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js?v=06009"></script>
+    <script src="admin.js?v=06009"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW failed:', e));
+            });
+        }
+    </script>
+</body>
+
+</html>
