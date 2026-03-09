@@ -7,6 +7,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
+@app.after_request
+def add_header(response):
+    # Evitar que el navegador guarde en caché las respuestas de la API
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+    return response
+
 DB_NAME = "database.db"
 
 def init_db():

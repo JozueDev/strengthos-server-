@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ── Cargar y mostrar clientes ──────────────────────────────
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_URL}/clientes`);
+            const response = await fetch(`${API_URL}/clientes?t=${new Date().getTime()}`);
             const clientes = await response.json();
 
             clientsList.innerHTML = "";
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (isExpanded && !profileLoaded) {
                             profileLoaded = true;
                             try {
-                                const res = await fetch(`${API_URL}/cliente/${cliente.user_id}/perfil`);
+                                 const res = await fetch(`${API_URL}/cliente/${cliente.user_id}/perfil?t=${new Date().getTime()}`);
                                 if (res.ok) {
                                     const perfil = await res.json();
                                     card.querySelector('[data-field="edad"]').innerText = perfil.edad && perfil.edad !== '--' ? perfil.edad : '--';
