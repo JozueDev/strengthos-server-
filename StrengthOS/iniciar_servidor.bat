@@ -1,9 +1,0 @@
-@echo off
-echo Iniciando servidor local de StrengthOS...
-echo.
-echo 1. Instalando dependencias necesarias (si faltan)...
-pip install -r requirements.txt
-echo.
-echo 2. Iniciando la aplicación Flask...
-python app.py
-pause
