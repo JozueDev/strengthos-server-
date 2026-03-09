@@ -16,7 +16,16 @@ def add_header(response):
         response.headers['Expires'] = '-1'
     return response
 
-DB_NAME = "database.db"
+# Configuración de base de datos persistente para Fly.io/Render
+DB_PATH_ENV = os.environ.get('DB_PATH')
+if DB_PATH_ENV:
+    DB_NAME = DB_PATH_ENV
+elif os.path.exists('/var/lib/data'):
+    DB_NAME = "/var/lib/data/database.db"
+elif os.path.exists('/data'):
+    DB_NAME = "/data/database.db"
+else:
+    DB_NAME = "database.db"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -415,6 +424,8 @@ def actualizar_rutina():
     return jsonify({"mensaje": "Rutina guardada exitosamente"}), 200
 
 if __name__ == '__main__':
-    print("Servidor iniciado en http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Usar puerto de sistema (Fly.io/Render) o 5000 por defecto
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Servidor iniciado en el puerto {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
 
