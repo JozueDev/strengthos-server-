@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (isExpanded && !profileLoaded) {
                             profileLoaded = true;
                             try {
-                                 const res = await fetch(`${API_URL}/cliente/${cliente.user_id}/perfil?t=${new Date().getTime()}`);
+                                const res = await fetch(`${API_URL}/cliente/${cliente.user_id}/perfil?t=${new Date().getTime()}`);
                                 if (res.ok) {
                                     const perfil = await res.json();
                                     card.querySelector('[data-field="edad"]').innerText = perfil.edad && perfil.edad !== '--' ? perfil.edad : '--';
@@ -208,10 +208,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ── Cerrar Sesión Admin ──────────────────────────────────
-    document.getElementById("admin-logout-btn")?.addEventListener("click", () => {
+    const logout = () => {
         sessionStorage.removeItem("strengthos_user");
         window.location.href = "index.html";
-    });
+    };
+
+    document.getElementById("admin-logout-btn")?.addEventListener("click", logout);
+    document.getElementById("logout-btn")?.addEventListener("click", logout);
 
     fetchClients();
 });

@@ -425,7 +425,7 @@ h3 {
     border-radius: 12px;
     color: var(--text-primary);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 16px; /* Evita que iOS haga zoom automático al enfocar */
     transition: all 0.3s;
 }
 
@@ -758,8 +758,11 @@ h3 {
     }
 
     .hero-container {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
+        padding: 0 16px;
     }
 
     .hero-visual-wrapper {
@@ -770,12 +773,13 @@ h3 {
         display: flex;
         flex-direction: column;
         align-items: center;
+        width: 100%;
     }
 
     .login-container {
         width: 100%;
-        max-width: 400px;
-        text-align: left;
+        max-width: 450px;
+        margin: 40px auto 0;
     }
 
     .about-grid {
@@ -796,23 +800,32 @@ h3 {
         grid-template-columns: 1fr;
     }
 
-    .hero-title {
-        font-size: 2.5rem;
+    .hero {
+        padding-top: 80px;
+        min-height: auto;
     }
 
-    .sphere {
-        width: 300px;
-        height: 300px;
+    .hero-title {
+        font-size: 2.25rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        margin-bottom: 24px;
+    }
+
+    .login-container {
+        padding: 24px;
+        border-radius: 20px;
     }
 
     .footer-grid {
-        grid-template-columns: 1fr;
+        flex-direction: column;
         text-align: center;
     }
 
-    .footer-links a,
-    .footer-contact p {
-        margin-bottom: 8px;
+    .footer-links {
+        justify-content: center;
     }
 }
 
