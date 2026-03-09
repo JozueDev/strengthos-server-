@@ -4,197 +4,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Atleta | StrengthOS</title>
+    <title>Mi Panel | StrengthOS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=05001">
+    <link rel="stylesheet" href="styles.css?v=06009">
     <link rel="icon" type="image/png" href="images/logo.png">
-
-    <!-- PWA configuration -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="apple-touch-icon" href="/images/logo.png">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .menu-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 20px 60px;
+        }
+
+        .menu-greeting {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .menu-greeting h1 {
+            font-size: clamp(1.8rem, 5vw, 3rem);
+            background: linear-gradient(135deg, #fff 0%, var(--primary-200) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .menu-greeting p {
+            color: var(--text-tertiary);
+            font-size: 1rem;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 860px;
+        }
+
+        .menu-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 32px 28px;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            border-color: rgba(var(--primary-rgb), 0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(var(--primary-rgb), 0.2);
+        }
+
+        .menu-card:hover::before {
+            opacity: 1;
+        }
+
+        .menu-card-icon {
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+
+        .menu-card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .menu-card-desc {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            line-height: 1.5;
+        }
+
+        .logout-link {
+            margin-top: 40px;
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            transition: color 0.2s;
+        }
+
+        .logout-link:hover {
+            color: #ef4444;
+        }
+    </style>
 </head>
 
-<body style="padding-top: 100px;">
+<body>
     <div class="particles-container" id="particles"></div>
 
     <nav class="navbar scrolled" id="navbar">
         <div class="container nav-content">
-            <a href="index.html" class="logo-container">
+            <a href="dashboard.html" class="logo-container">
                 <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
                 <span class="logo-text">StrengthOS</span>
             </a>
-            <div class="nav-links">
-                <a href="#" class="nav-link" id="logout-btn" style="color: var(--warning);">Cerrar Sesión</a>
-            </div>
-            <button class="mobile-menu-toggle" style="color: var(--text-primary);">☰</button>
         </div>
     </nav>
 
-    <div class="container section-padding">
-        <div class="section-header animated-element animate-in"
-            style="text-align: left; margin-bottom: 40px; max-width: 100%;">
-            <h1 class="section-title" style="font-size: 2rem;">Tu Perfil de Entrenamiento</h1>
-            <p class="section-subtitle">Bienvenido de nuevo, <span id="client-name-display"
-                    style="color: var(--text-primary); font-weight: 600;">Atleta</span></p>
+    <div class="menu-page">
+        <div class="menu-greeting">
+            <h1>¡Bienvenido, <span id="user-name">Atleta</span>!</h1>
+            <p>¿Qué quieres hacer hoy?</p>
         </div>
 
-        <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px; align-items: start;"
-            class="dashboard-grid">
+        <div class="menu-grid">
+            <a href="calendar.html" class="menu-card">
+                <div class="menu-card-icon">📅</div>
+                <div class="menu-card-title">Mis Entrenos</div>
+                <div class="menu-card-desc">Consulta tu calendario de entrenamiento y registra tu progreso diario.</div>
+            </a>
 
-            <!-- SIDEBAR -->
-            <aside class="glass-card animated-element animate-in" style="position: sticky; top: 120px; padding: 24px;">
-                <h3 style="margin-bottom: 20px; font-size: 1.2rem; color: var(--primary-100);">Datos Personales</h3>
+            <a href="progress.html" class="menu-card">
+                <div class="menu-card-icon">📈</div>
+                <div class="menu-card-title">Mi Progreso</div>
+                <div class="menu-card-desc">Visualiza gráficas de evolución de repeticiones y cargas por mes.</div>
+            </a>
 
-                <div style="margin-bottom: 12px; font-size: 0.9rem;">
-                    <span style="color: var(--text-tertiary);">Nombre:</span>
-                    <strong style="color: var(--text-primary); display: block;" id="sidebar-name">--</strong>
-                </div>
-                <div style="margin-bottom: 20px; font-size: 0.9rem;">
-                    <span style="color: var(--text-tertiary);">ID de Atleta:</span>
-                    <strong style="color: var(--primary-200); font-family: monospace; display: block;"
-                        id="sidebar-id">--</strong>
-                </div>
-
-
-
-                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 24px;">
-
-                <nav style="display: flex; flex-direction: column; gap: 10px;">
-                    <button class="nav-sidebar-btn active" id="nav-btn-calendar">📅 Calendario de Entreno</button>
-                    <button class="nav-sidebar-btn" id="nav-btn-monthly">📈 Progreso Mensual</button>
-
-                    <button class="nav-sidebar-btn" id="nav-btn-security">🔒 Seguridad</button>
-                </nav>
-            </aside>
-
-            <!-- CONTENIDO PRINCIPAL -->
-            <main class="animated-element animate-in" style="animation-delay: 0.2s;">
-
-                <!-- VIEW CALENDARIO -->
-                <div id="view-calendar" class="dashboard-view active">
-                    <div class="glass-card" style="margin-bottom: 40px;">
-                        <div class="calendar-wrapper">
-                            <div class="calendar-header">
-                                <button class="calendar-nav-btn" id="prev-month">&lt;</button>
-                                <h4 id="month-year-display">Calendario</h4>
-                                <button class="calendar-nav-btn" id="next-month">&gt;</button>
-                            </div>
-                            <div class="calendar-grid" style="margin-bottom: 10px;">
-                                <div class="calendar-day-name">Dom</div>
-                                <div class="calendar-day-name">Lun</div>
-                                <div class="calendar-day-name">Mar</div>
-                                <div class="calendar-day-name">Mié</div>
-                                <div class="calendar-day-name">Jue</div>
-                                <div class="calendar-day-name">Vie</div>
-                                <div class="calendar-day-name">Sáb</div>
-                            </div>
-                            <div class="calendar-grid" id="calendar-days">
-                                <!-- Javascript inyectará los días aquí -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VIEW RUTINA DEL DIA -->
-                <div id="view-routine" class="dashboard-view" style="display: none;">
-                    <div class="glass-card">
-                        <button id="btn-back-calendar" class="btn-primary"
-                            style="margin-bottom: 20px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: var(--text-secondary); padding: 8px 16px; font-size: 0.9rem;">&larr;
-                            Volver al Calendario</button>
-
-                        <h3 id="routine-view-title" style="margin-bottom: 15px; color: var(--primary-100);">Rutina del
-                            Día</h3>
-                        <div class="routine-details" id="routine-text" style="margin-bottom: 30px;"></div>
-
-                        <h4
-                            style="margin-bottom: 15px; color: var(--primary-200); font-size: 1.1rem; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2);">
-                            Tus Resultados y Progreso</h4>
-                        <form id="progress-form">
-                            <div id="dynamic-sets-container" style="margin-bottom: 20px;"></div>
-                            <div class="input-group">
-                                <label>Notas Adicionales (Opcional):</label>
-                                <textarea id="routine-notes" rows="4"
-                                    placeholder="Ej: Me sentí muy fuerte hoy, subí 5kg en mi última serie de sentadilla."
-                                    style="width: 100%; padding: 16px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical;"></textarea>
-                            </div>
-                            <button type="submit" class="btn-primary" id="save-progress-btn">Guardar Progreso</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- VIEW MENSUAL -->
-                <div id="view-monthly" class="dashboard-view" style="display: none;">
-                    <div class="glass-card">
-                        <h3 style="margin-bottom: 20px; color: var(--primary-100);">Estadísticas de Progreso Mensual
-                        </h3>
-                        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 20px;">
-                            Selecciona un mes para ver las gráficas de evolución en repeticiones totales y cargas
-                            máximas.
-                        </p>
-
-                        <select id="monthly-stats-select"
-                            style="width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; margin-bottom: 30px;">
-                            <option value="">Selecciona un mes...</option>
-                        </select>
-
-                        <div id="monthly-stats-container" style="display:flex; flex-direction:column; gap:30px;">
-                            <!-- Js inyecta graficos -->
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- VIEW SEGURIDAD -->
-                <div id="view-security" class="dashboard-view" style="display: none;">
-                    <div class="glass-card">
-                        <h3 style="margin-bottom: 24px;">Seguridad</h3>
-                        <p class="body-text"
-                            style="color: var(--text-tertiary); margin-bottom: 20px; font-size: 0.9rem;">Puedes
-                            actualizar tu contraseña provisional en cualquier momento.</p>
-
-                        <form id="change-password-form">
-                            <div class="input-group">
-                                <label>Contraseña Actual</label>
-                                <input type="password" id="current_password" placeholder="Tu contraseña actual"
-                                    required>
-                            </div>
-                            <div class="input-group">
-                                <label>Nueva Contraseña</label>
-                                <input type="password" id="new_password" placeholder="Mínimo 6 caracteres" required>
-                            </div>
-                            <div class="input-group">
-                                <label>Repetir Nueva Contraseña</label>
-                                <input type="password" id="confirm_password" placeholder="Confirma tu nueva contraseña"
-                                    required>
-                            </div>
-                            <button type="submit" class="btn-primary" style="margin-top: 10px;">Actualizar
-                                Contraseña</button>
-                            <div id="password-feedback" style="margin-top: 15px; font-size: 0.85rem; text-align: left;">
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-            </main>
+            <a href="security.html" class="menu-card">
+                <div class="menu-card-icon">🔒</div>
+                <div class="menu-card-title">Seguridad</div>
+                <div class="menu-card-desc">Actualiza tu contraseña y gestiona la seguridad de tu cuenta.</div>
+            </a>
         </div>
 
-
+        <button class="logout-link" id="logout-btn">Cerrar Sesión</button>
     </div>
 
-    <!-- Background particles script inline for simplicity on dashboard -->
-    <script src="dashboard.js?v=05003"></script>
+    <script src="script.js?v=06009"></script>
+    <script>
+        // Auth check
+        const userDataStr = sessionStorage.getItem("strengthos_user");
+        if (!userDataStr) {
+            window.location.href = "index.html";
+        } else {
+            const userData = JSON.parse(userDataStr);
+            document.getElementById("user-name").innerText = userData.nombre.split(" ")[0];
+        }
+
+        document.getElementById("logout-btn").addEventListener("click", () => {
+            sessionStorage.removeItem("strengthos_user");
+            window.location.href = "index.html";
+        });
+    </script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(error => {
-                    console.log('SW Registration failed:', error);
-                });
+                navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW failed:', e));
             });
         }
     </script>

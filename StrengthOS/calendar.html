@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Entrenos | StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=06009">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="/images/logo.png">
+    <style>
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            padding: 10px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body style="padding-top: 90px;">
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-content">
+            <a href="dashboard.html" class="logo-container">
+                <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container section-padding" style="max-width: 800px;">
+
+        <!-- Vista: Calendario -->
+        <div id="view-calendar">
+            <div class="page-header">
+                <a href="dashboard.html" class="back-btn">← Menú</a>
+                <h1 style="font-size: 1.6rem; color: var(--text-primary);">📅 Mis Entrenos</h1>
+            </div>
+
+            <div class="glass-card">
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button class="calendar-nav-btn" id="prev-month">&lt;</button>
+                        <h4 id="month-year-display">Calendario</h4>
+                        <button class="calendar-nav-btn" id="next-month">&gt;</button>
+                    </div>
+                    <div class="calendar-grid" style="margin-bottom: 10px;">
+                        <div class="calendar-day-name">Dom</div>
+                        <div class="calendar-day-name">Lun</div>
+                        <div class="calendar-day-name">Mar</div>
+                        <div class="calendar-day-name">Mié</div>
+                        <div class="calendar-day-name">Jue</div>
+                        <div class="calendar-day-name">Vie</div>
+                        <div class="calendar-day-name">Sáb</div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-days"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista: Detalle de Rutina del Día -->
+        <div id="view-routine" style="display: none;">
+            <div class="page-header">
+                <button class="back-btn" id="btn-back-calendar">← Calendario</button>
+                <h2 id="routine-view-title" style="font-size: 1.2rem; color: var(--primary-100);">Rutina del Día</h2>
+            </div>
+
+            <div class="glass-card">
+                <div class="routine-details" id="routine-text" style="margin-bottom: 30px;"></div>
+
+                <h4
+                    style="margin-bottom: 15px; color: var(--primary-200); font-size: 1.1rem; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2);">
+                    Tus Resultados y Progreso
+                </h4>
+
+                <form id="progress-form">
+                    <div id="dynamic-sets-container" style="margin-bottom: 20px;"></div>
+                    <div class="input-group">
+                        <label>Notas Adicionales (Opcional):</label>
+                        <textarea id="routine-notes" rows="4"
+                            placeholder="Ej: Me sentí muy fuerte hoy, subí 5kg en mi última serie."
+                            style="width: 100%; padding: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" id="save-progress-btn">Guardar Progreso</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js?v=06009"></script>
+    <script src="calendar.js?v=06009"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW failed:', e));
+            });
+        }
+    </script>
+</body>
+
+</html>

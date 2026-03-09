@@ -1021,3 +1021,262 @@ h3 {
     background: rgba(var(--primary-rgb), 0.15);
     color: var(--primary-100);
 }
+
+/* Admin Table Action Buttons */
+.admin-action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.admin-action-buttons button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.btn-progress {
+    background: rgba(0, 255, 100, 0.1);
+    border-color: rgba(0, 255, 100, 0.5);
+    color: #2ecc71;
+}
+
+.btn-progress:hover {
+    background: rgba(0, 255, 100, 0.2) !important;
+}
+
+/* Chart Container Cards */
+.chart-card {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 12px;
+    border-top: 3px solid var(--primary-500);
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+    /* Evita que el interior se desborde */
+}
+
+/* -----------------------------
+   SISTEMA DE CHAT
+------------------------------ */
+.chat-fab {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: var(--primary-500);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(var(--primary-rgb), 0.5);
+    cursor: pointer;
+    z-index: 99;
+    transition: transform 0.2s;
+}
+
+.chat-fab:hover {
+    transform: scale(1.1);
+}
+
+.chat-fab .unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chat-messages-area {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 400px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-msg {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.chat-msg.sent {
+    align-self: flex-end;
+    background: var(--primary-500);
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-msg.received {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-bottom-left-radius: 2px;
+}
+
+.chat-msg-time {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 12px 15px;
+    border-radius: 20px;
+    outline: none;
+    font-family: inherit;
+}
+
+.chat-input:focus {
+    border-color: var(--primary-500);
+}
+
+/* -----------------------------
+   MOBILE OPTIMIZACIONES EXTRAS
+------------------------------ */
+@media (max-width: 600px) {
+
+    /* Reducir márgenes de las vistas principales */
+    .section-padding {
+        padding: 60px 0;
+    }
+
+    /* Reducir espacios del calendario para que no obligue a hacer scroll */
+    .calendar-grid {
+        gap: 4px;
+    }
+
+    .calendar-day-name {
+        font-size: 0.70rem;
+    }
+
+    .calendar-day-number {
+        font-size: 0.85rem;
+    }
+
+    /* Reducir el modal de inputs de repeticiones y notas para que quepa en pantalla pequeña */
+    .modal-container {
+        width: 95%;
+        max-width: 100%;
+        margin-top: 10px;
+    }
+
+    .glass-card {
+        padding: 20px;
+    }
+
+    .routine-details {
+        max-height: 50vh;
+    }
+
+    /* Reducir el padding interno de los contenedores de los gráficos para que la gráfica tenga el 100% del ancho */
+    .chart-card {
+        padding: 10px;
+    }
+
+    /* CONVERTIMOS LA TABLA EN TARJETAS RESPONSIVAS PARA EL CELULAR */
+    .clients-table,
+    .clients-table tbody,
+    .clients-table tr,
+    .clients-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .clients-table thead {
+        display: none;
+        /* Ocultamos los encabezados de la tabla que no sirven en esta vista */
+    }
+
+    .clients-table tr {
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .clients-table td {
+        padding: 10px 0;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .clients-table td:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Agregamos titulos descriptivos pequeños antes de los valores para entender que son */
+    .clients-table td:nth-child(1)::before {
+        content: "ID / Usuario:";
+        font-size: 0.70rem;
+        color: var(--text-tertiary);
+    }
+
+    .clients-table td:nth-child(2)::before {
+        content: "Nombre Atleta:";
+        font-size: 0.70rem;
+        color: var(--text-tertiary);
+    }
+
+    .clients-table td:nth-child(3)::before {
+        content: "Acciones:";
+        font-size: 0.70rem;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+    }
+
+    /* Acomodar los botones para celulares en cuadrícula limpia (2 arriba y 2 abajo) */
+    .admin-action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .admin-action-buttons button {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        margin: 0;
+    }
+}

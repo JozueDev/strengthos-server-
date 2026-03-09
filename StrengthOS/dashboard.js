@@ -169,10 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (records.length === 0) return;
 
             const ejContainer = document.createElement("div");
-            ejContainer.style.background = "rgba(0,0,0,0.4)";
-            ejContainer.style.padding = "20px";
-            ejContainer.style.borderRadius = "12px";
-            ejContainer.style.borderTop = "3px solid var(--primary-500)";
+            ejContainer.className = "chart-card";
 
             const title = document.createElement("h4");
             title.style.color = "var(--primary-100)";
@@ -254,6 +251,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            intersect: false,
+                            titleFont: { size: 11 },
+                            bodyFont: { size: 11 },
+                            padding: 8,
                             callbacks: {
                                 afterLabel: function (context) {
                                     const record = records[context.dataIndex];
@@ -635,9 +636,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         for (let s = 1; s <= numSets; s++) {
                             const setRow = document.createElement('div');
                             setRow.style.display = 'flex';
+                            setRow.style.flexWrap = 'wrap';
                             setRow.style.gap = '10px';
                             setRow.style.alignItems = 'center';
-                            setRow.style.marginBottom = '8px';
+                            setRow.style.marginBottom = '12px';
 
                             const setLabel = document.createElement('span');
                             setLabel.innerText = `Serie ${s}`;
@@ -770,4 +772,5 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("calendar-days")) {
         fetchRutinas().then(() => renderCalendar());
     }
+
 });
