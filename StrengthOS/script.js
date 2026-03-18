@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 0. Redirigir si ya hay sesión (Evita que el usuario logueado caiga en el index)
     const userDataStr = sessionStorage.getItem("strengthos_user");
-    if (userDataStr && window.location.pathname.endsWith("index.html") || window.location.pathname === "/") {
+    if (userDataStr && (window.location.pathname.endsWith("index.html") || window.location.pathname === "/")) {
         const userData = JSON.parse(userDataStr);
         if (userData.es_admin) {
             window.location.href = "admin.html";
