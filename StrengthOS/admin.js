@@ -53,6 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <div class="client-actions">
                                     <a href="admin-routines.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
                                        class="action-icon-btn" title="Rutinas">📅</a>
+                                    <a href="admin-nutrition.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
+                                       class="action-icon-btn" title="Plan Alimenticio">🥗</a>
                                     <a href="admin-progress.html?user_id=${cliente.user_id}&nombre=${encodedNombre}"
                                        class="action-icon-btn" title="Progreso">📈</a>
                                     <button class="action-icon-btn" title="Cambiar contraseña"
@@ -209,6 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Cerrar Sesión Admin ──────────────────────────────────
     const logout = () => {
+        localStorage.removeItem("strengthos_user");
         sessionStorage.removeItem("strengthos_user");
         window.location.href = "index.html";
     };

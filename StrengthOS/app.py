@@ -1,11 +1,133 @@
 import sqlite3
 import os
+import json
+import datetime
+import base64
+import io
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import time
+import re
+from google import genai
+from PIL import Image
+
+load_dotenv()
+
+# Configuración de Gemini
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_API_KEY_HERE":
+    print("[ADVERTENCIA] GEMINI_API_KEY no esta configurada correctamente en el archivo .env")
+    client = None
+else:
+    try:
+        # Deshabilitar reintentos internos del SDK (tenacity) para que
+        # nuestro propio _gemini_generate maneje el fallback entre modelos
+        client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options={"retry_config": {"retries": 0}}
+        )
+        model_name = 'gemini-2.5-flash'
+        print(f"[OK] Gemini Client inicializado. Modelo primario: {model_name}")
+    except Exception as e:
+        # Si el http_options no es compatible con esta version del SDK, inicializar sin el
+        try:
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            print(f"[OK] Gemini Client inicializado (sin retry config)")
+        except Exception as e2:
+            print(f"[ERROR] Error al inicializar Gemini Client: {e2}")
+            client = None
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
+
+# ── Lista de modelos Gemini por prioridad (fallback automático) ───────────────
+GEMINI_MODELS = [
+    'gemini-2.5-flash',          # Primero: el que tiene cuota disponible
+    'gemini-2.0-flash',          # Segundo: fallback estable
+    'gemini-1.5-flash',          # Tercero: último recurso
+]
+
+# ── Helper: llamada a Gemini con fallback de modelos y reintentos ──────────────
+def _gemini_generate(contents, max_retries=2):
+    """Intenta generar con la lista GEMINI_MODELS en orden.
+    
+    - 503 UNAVAILABLE: pasa al siguiente modelo inmediatamente
+    - 429 cuota agotada: pasa al siguiente modelo
+    - 429 rate-limit temporal (retry hint): espera y reintenta
+    - Otro error HTTP: propaga
+    """
+    if not client:
+        raise RuntimeError("Configuracion de IA no disponible (falta GEMINI_API_KEY)")
+
+    # Importar la clase de error del SDK para detectar correctamente
+    try:
+        from google.genai import errors as genai_errors
+        _api_error_cls = genai_errors.APIError
+    except ImportError:
+        _api_error_cls = Exception  # fallback: atrapar cualquier excepcion
+
+    for model_name in GEMINI_MODELS:
+        for attempt in range(max_retries):
+            try:
+                print(f"[Gemini] Modelo: {model_name} | Intento {attempt + 1}/{max_retries}")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents
+                )
+                return response  # Exito
+
+            except Exception as e:
+                error_str   = str(e)
+                # Obtener el codigo HTTP del SDK si está disponible
+                status_code = getattr(e, 'status_code', None) or getattr(e, 'code', None)
+                if status_code is None:
+                    # Intentar parsear del string como último recurso
+                    m = re.search(r'\b(4\d{2}|5\d{2})\b', error_str)
+                    status_code = int(m.group(1)) if m else 0
+
+                print(f"[Gemini] Error en {model_name}: HTTP {status_code} — {error_str[:120]}")
+
+                # ── 503 / 502 Alta demanda o error temporal del servidor ────
+                if status_code in (502, 503):
+                    print(f"[Gemini] {model_name} no disponible ({status_code}). Probando siguiente modelo...")
+                    time.sleep(2)
+                    break  # Siguiente modelo
+
+                # ── 429 Cuota / Rate limit ─────────────────────────────────
+                elif status_code == 429 or 'RESOURCE_EXHAUSTED' in error_str:
+                    retry_match = re.search(r'retry in (\d+(?:\.\d+)?)s', error_str, re.IGNORECASE)
+                    is_quota_exhausted = (
+                        'limit: 0' in error_str or
+                        'free_tier' in error_str.lower() or
+                        (not retry_match)
+                    )
+                    if is_quota_exhausted:
+                        print(f"[Gemini] Cuota agotada para {model_name}. Probando siguiente modelo...")
+                        break  # Siguiente modelo
+
+                    wait_seconds = 35
+                    if retry_match:
+                        wait_seconds = min(float(retry_match.group(1)) + 3, 90)
+                    if attempt < max_retries - 1:
+                        print(f"[Gemini] Rate limit en {model_name}. Esperando {wait_seconds:.0f}s...")
+                        time.sleep(wait_seconds)
+                        continue
+                    break  # Siguiente modelo
+
+                # ── Otro error → propagar ──────────────────────────────────
+                else:
+                    raise
+
+    raise RuntimeError(
+        "RATE_LIMIT: Todos los modelos de IA estan ocupados. "
+        "Por favor espera 1-2 minutos y vuelve a intentarlo."
+    )
+
+
 
 @app.after_request
 def add_header(response):
@@ -38,7 +160,15 @@ def init_db():
             nombre TEXT NOT NULL,
             contrasena_hash TEXT NOT NULL,
             es_admin BOOLEAN DEFAULT 0,
-            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            peso TEXT DEFAULT '--',
+            estatura TEXT DEFAULT '--',
+            edad TEXT DEFAULT '--',
+            grasa_corporal TEXT DEFAULT '--',
+            objetivo TEXT DEFAULT '',
+            alergias TEXT DEFAULT '',
+            alimentos TEXT DEFAULT '',
+            plan_nutricional TEXT DEFAULT ''
         )
     ''')
     # Tabla de rutinas (ejemplo)
@@ -59,12 +189,23 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
-    try:
-        cursor.execute("ALTER TABLE clientes ADD COLUMN peso TEXT DEFAULT '--'")
-        cursor.execute("ALTER TABLE clientes ADD COLUMN estatura TEXT DEFAULT '--'")
-        cursor.execute("ALTER TABLE clientes ADD COLUMN edad TEXT DEFAULT '--'")
-    except sqlite3.OperationalError:
-        pass
+    cols_a_añadir = [
+        ("peso", "TEXT DEFAULT '--'"),
+        ("estatura", "TEXT DEFAULT '--'"),
+        ("edad", "TEXT DEFAULT '--'"),
+        ("grasa_corporal", "TEXT DEFAULT '--'"),
+        ("objetivo", "TEXT DEFAULT ''"),
+        ("alergias", "TEXT DEFAULT ''"),
+        ("alimentos", "TEXT DEFAULT ''"),
+        ("plan_nutricional", "TEXT DEFAULT ''"),
+        ("json_meals_cache", "TEXT DEFAULT ''")
+    ]
+    
+    for col_name, col_type in cols_a_añadir:
+        try:
+            cursor.execute(f"ALTER TABLE clientes ADD COLUMN {col_name} {col_type}")
+        except sqlite3.OperationalError:
+            pass
     
     # Crear el usuario administrador
     cursor.execute("SELECT * FROM clientes WHERE user_id='admin'")
@@ -76,6 +217,34 @@ def init_db():
         except:
             pass
             
+    # Tabla de comidas diarias
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comidas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            cliente_id INTEGER,
+            dia TEXT,
+            nombre TEXT,
+            calorias INTEGER DEFAULT 0,
+            proteinas REAL DEFAULT 0,
+            carbohidratos REAL DEFAULT 0,
+            grasas REAL DEFAULT 0,
+            completado BOOLEAN DEFAULT 0,
+            fuente TEXT DEFAULT 'manual',
+            FOREIGN KEY(cliente_id) REFERENCES clientes(id)
+        )
+    ''')
+    # Columnas de comidas que podrían faltar en BDs antiguas
+    for col, typ in [
+        ("fuente", "TEXT DEFAULT 'manual'"),
+        ("user_id", "TEXT"),
+        ("detalle", "TEXT DEFAULT '[]'")
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE comidas ADD COLUMN {col} {typ}")
+        except sqlite3.OperationalError:
+            pass
+    
     conn.commit()
     conn.close()
 
@@ -93,8 +262,19 @@ def serve_static(path):
     # Si el archivo existe físicamente en esta carpeta, envíalo:
     if os.path.exists(os.path.join('.', path)):
         return send_from_directory('.', path)
-    # Si no, por defecto te regresamos al index
-    return send_from_directory('.', 'index.html')
+    
+    # Si no tiene extensión, intentar buscar .html (Ej: /dashboard -> /dashboard.html)
+    if '.' not in path:
+        if os.path.exists(os.path.join('.', path + '.html')):
+            return send_from_directory('.', path + '.html')
+    
+    # Solo redirigir al index si es una navegación de página que no existe
+    # o si es un archivo .html que no existe. Evitar colisionar con /api/
+    if not path.startswith('api/'):
+        if '.' not in path or path.endswith('.html'):
+            return send_from_directory('.', 'index.html')
+    
+    return jsonify({"error": "No encontrado"}), 404
 
 # API: Registro de nuevo cliente
 @app.route('/api/clientes', methods=['POST'])
@@ -145,19 +325,156 @@ def obtener_clientes():
     conn.close()
     return jsonify(clientes)
 
+# ── API: SEGUIMIENTO DE COMIDAS ──────────────────────────────
+
+@app.route('/api/comidas/<user_id>', methods=['GET'])
+def obtener_comidas_dia(user_id):
+    dia = request.args.get('dia') # YYYY-MM-DD
+    if not dia:
+        return jsonify({"error": "Falta la fecha"}), 400
+        
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM clientes WHERE user_id=?", (user_id,))
+    cliente = cursor.fetchone()
+    if not cliente:
+        conn.close()
+        return jsonify({"error": "Cliente no encontrado"}), 404
+        
+    cursor.execute("""
+        SELECT id, nombre, calorias, proteinas, carbohidratos, grasas, completado, COALESCE(detalle, '[]')
+        FROM comidas
+        WHERE (user_id=? OR cliente_id=?) AND dia=?
+        ORDER BY id ASC
+    """, (user_id, cliente[0], dia))
+    rows = cursor.fetchall()
+    def parse_detalle(raw):
+        try: return json.loads(raw) if raw else []
+        except: return []
+    comidas = [
+        {"id": r[0], "nombre": r[1], "calorias": r[2], "proteinas": r[3],
+         "carbohidratos": r[4], "grasas": r[5], "completado": bool(r[6]),
+         "ingredientes": parse_detalle(r[7])}
+        for r in rows
+    ]
+    
+    # También obtener objetivos nutricionales del perfil
+    cursor.execute("SELECT objetivo FROM clientes WHERE id=?", (cliente[0],))
+    objetivo = cursor.fetchone()[0]
+    
+    conn.close()
+    return jsonify({"comidas": comidas, "objetivo": objetivo})
+
+@app.route('/api/comidas', methods=['POST'])
+def agregar_comida():
+    data = request.json
+    user_id = data.get('user_id')
+    dia = data.get('dia')
+    nombre = data.get('nombre')
+    calorias = data.get('calorias', 0)
+    proteinas = data.get('proteinas', 0)
+    carbohidratos = data.get('carbohidratos', 0)
+    grasas = data.get('grasas', 0)
+    
+    if not all([user_id, dia, nombre]):
+        return jsonify({"error": "Faltan datos"}), 400
+        
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM clientes WHERE user_id=?", (user_id,))
+    cliente = cursor.fetchone()
+    if not cliente:
+        conn.close()
+        return jsonify({"error": "No encontrado"}), 404
+        
+    cursor.execute("INSERT INTO comidas (cliente_id, dia, nombre, calorias, proteinas, carbohidratos, grasas) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (cliente[0], dia, nombre, calorias, proteinas, carbohidratos, grasas))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": "Comida agregada"}), 201
+
+@app.route('/api/comidas/<int:comida_id>/toggle', methods=['PUT'])
+def toggle_comida(comida_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE comidas SET completado = NOT completado WHERE id=?", (comida_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": "Estado actualizado"}), 200
+
+@app.route('/api/comidas/<int:comida_id>', methods=['DELETE'])
+def eliminar_comida(comida_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM comidas WHERE id=?", (comida_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": "Comida eliminada"}), 200
+
+@app.route('/api/comidas/<int:comida_id>', methods=['PUT'])
+def actualizar_comida(comida_id):
+    data = request.json
+    nombre = data.get('nombre')
+    calorias = data.get('calorias', 0)
+    proteinas = data.get('proteinas', 0)
+    carbohidratos = data.get('carbohidratos', 0)
+    grasas = data.get('grasas', 0)
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE comidas SET nombre=?, calorias=?, proteinas=?, carbohidratos=?, grasas=? WHERE id=?",
+                   (nombre, calorias, proteinas, carbohidratos, grasas, comida_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": "Comida actualizada"}), 200
+
+@app.route('/api/nutricion/<user_id>/plan', methods=['PUT'])
+def guardar_plan_manual(user_id):
+    data = request.json
+    plan = data.get('plan')
+    if plan is None:
+        return jsonify({"error": "No se proporcionó un plan"}), 400
+        
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    if plan == "":
+        # Si se borra el plan, también limpiamos los metadatos asociados para un reset total
+        cursor.execute("UPDATE clientes SET plan_nutricional='', objetivo='', alergias='', alimentos='' WHERE user_id=?", (user_id,))
+    else:
+        cursor.execute("UPDATE clientes SET plan_nutricional=? WHERE user_id=?", (plan, user_id))
+    
+    # Si el plan se está borrando (es vacío), también borramos las comidas programadas
+    # para que el dashboard del cliente se limpie totalmente.
+    if plan == "":
+        try:
+            # Obtener el ID interno del cliente primero
+            cursor.execute("SELECT id FROM clientes WHERE user_id=?", (user_id,))
+            cliente_row = cursor.fetchone()
+            if cliente_row:
+                cursor.execute("DELETE FROM comidas WHERE cliente_id=?", (cliente_row[0],))
+        except Exception as e:
+            print(f"Error al limpiar comidas: {e}")
+
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": "Plan actualizado correctamente"})
+
 # API: Actualizar perfil de cliente
 @app.route('/api/cliente/<user_id>/perfil', methods=['PUT'])
 def actualizar_perfil(user_id):
     data = request.json
-    peso     = data.get('peso', '').strip()
-    estatura = data.get('estatura', '').strip()
-    edad     = data.get('edad', '').strip()
+    peso           = data.get('peso', '').strip()
+    estatura       = data.get('estatura', '').strip()
+    edad           = data.get('edad', '').strip()
+    grasa_corporal = data.get('grasa_corporal', '').strip()
 
     # Solo actualizar campos que realmente se enviaron (no vacíos)
     campos = {}
-    if peso:     campos['peso']     = peso
-    if estatura: campos['estatura'] = estatura
-    if edad:     campos['edad']     = edad
+    if peso:           campos['peso']           = peso
+    if estatura:       campos['estatura']       = estatura
+    if edad:           campos['edad']           = edad
+    if grasa_corporal: campos['grasa_corporal'] = grasa_corporal
 
     if not campos:
         return jsonify({"error": "No se enviaron datos para actualizar"}), 400
@@ -181,18 +498,24 @@ def obtener_perfil(user_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, user_id, nombre, fecha_registro, peso, estatura, edad FROM clientes WHERE user_id=?", (user_id,))
+        cursor.execute("SELECT id, user_id, nombre, fecha_registro, peso, estatura, edad, grasa_corporal FROM clientes WHERE user_id=?", (user_id,))
         row = cursor.fetchone()
         if row:
-            cliente = {"id": row[0], "user_id": row[1], "nombre": row[2], "fecha_registro": row[3], "peso": row[4], "estatura": row[5], "edad": row[6]}
+            cliente = {
+                "id": row[0], "user_id": row[1], "nombre": row[2], "fecha_registro": row[3], 
+                "peso": row[4], "estatura": row[5], "edad": row[6], "grasa_corporal": row[7]
+            }
         else:
             conn.close()
             return jsonify({"error": "No encontrado"}), 404
     except sqlite3.OperationalError:
-        cursor.execute("SELECT id, user_id, nombre, fecha_registro FROM clientes WHERE user_id=?", (user_id,))
+        cursor.execute("SELECT id, user_id, nombre, fecha_registro, peso, estatura, edad FROM clientes WHERE user_id=?", (user_id,))
         row = cursor.fetchone()
         if row:
-            cliente = {"id": row[0], "user_id": row[1], "nombre": row[2], "fecha_registro": row[3], "peso": "--", "estatura": "--", "edad": "--"}
+            cliente = {
+                "id": row[0], "user_id": row[1], "nombre": row[2], "fecha_registro": row[3], 
+                "peso": row[4], "estatura": row[5], "edad": row[6], "grasa_corporal": "--"
+            }
         else:
             conn.close()
             return jsonify({"error": "No encontrado"}), 404
@@ -209,19 +532,19 @@ def login():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, nombre, contrasena_hash, es_admin, peso, estatura, edad FROM clientes WHERE user_id=?", (user_id,))
+        cursor.execute("SELECT id, nombre, contrasena_hash, es_admin, peso, estatura, edad, grasa_corporal FROM clientes WHERE user_id=?", (user_id,))
         cliente = cursor.fetchone()
     except sqlite3.OperationalError:
         try:
+            cursor.execute("SELECT id, nombre, contrasena_hash, es_admin, peso, estatura, edad FROM clientes WHERE user_id=?", (user_id,))
+            cliente = cursor.fetchone()
+            if cliente:
+                cliente = (cliente[0], cliente[1], cliente[2], cliente[3], cliente[4], cliente[5], cliente[6], "--")
+        except sqlite3.OperationalError:
             cursor.execute("SELECT id, nombre, contrasena_hash, es_admin FROM clientes WHERE user_id=?", (user_id,))
             cliente = cursor.fetchone()
             if cliente:
-                cliente = (cliente[0], cliente[1], cliente[2], cliente[3], "--", "--", "--")
-        except sqlite3.OperationalError:
-            cursor.execute("SELECT id, nombre, contrasena_hash FROM clientes WHERE user_id=?", (user_id,))
-            cliente = cursor.fetchone()
-            if cliente:
-                cliente = (cliente[0], cliente[1], cliente[2], False, "--", "--", "--")
+                cliente = (cliente[0], cliente[1], cliente[2], cliente[3], "--", "--", "--", "--")
             
     conn.close()
 
@@ -236,7 +559,8 @@ def login():
                 "es_admin": es_admin,
                 "peso": cliente[4] if len(cliente) > 4 else "--",
                 "estatura": cliente[5] if len(cliente) > 5 else "--",
-                "edad": cliente[6] if len(cliente) > 6 else "--"
+                "edad": cliente[6] if len(cliente) > 6 else "--",
+                "grasa_corporal": cliente[7] if len(cliente) > 7 else "--"
             }
         }), 200
     else:
@@ -423,9 +747,514 @@ def actualizar_rutina():
     
     return jsonify({"mensaje": "Rutina guardada exitosamente"}), 200
 
+# ── SECCIÓN DE NUTRICIÓN CON IA ─────────────────────────────
+
+@app.route('/api/nutricion/estimar-grasa', methods=['POST'])
+def estimar_grasa():
+    if not client:
+        return jsonify({"error": "Configuración de IA no disponible (falta GEMINI_API_KEY)"}), 503
+    
+    if 'foto' not in request.files:
+        return jsonify({"error": "No se recibió ninguna imagen"}), 400
+    
+    file = request.files['foto']
+    img = Image.open(file.stream)
+    
+    prompt = """
+    Eres un especialista certificado en composicion corporal con experiencia en DEXA scan y
+    antropometria deportiva. Analiza esta imagen con la precision de un profesional.
+
+    METODOLOGIA DE EVALUACION:
+    1. Observa la distribucion de grasa subcutanea (abdomen, caderas, muslos, brazos)
+    2. Identifica el nivel de definicion muscular visible (venas, separacion entre grupos musculares)
+    3. Evalua la distribucion androide vs ginecoide
+    4. Considera el tipo de cuerpo aparente (ectomorfo, mesomorfo, endomorfo)
+
+    ESCALA DE REFERENCIA:
+    - 5-9%: Competicion (culturismo extremo, venas en abdomen)
+    - 10-14%: Atletico (abs visibles, definicion muscular clara)
+    - 15-19%: Fitness (abs ligeros, buena forma general)
+    - 20-24%: Promedio (algo de grasa abdominal, sin definicion)
+    - 25-29%: Por encima del promedio (grasa visible en tronco y brazos)
+    - 30%+: Obesidad leve a moderada
+
+    IMPORTANTE:
+    - Si la imagen no muestra el cuerpo con suficiente claridad, indicalo honestamente.
+    - Da un rango realista, no subestimes ni sobrestimes.
+    - Explica los indicadores visuales especificos que usaste.
+    - Responde en espanol, tono profesional y motivador.
+
+    Responde UNICAMENTE en formato JSON:
+    {"porcentaje": "XX-XX%", "explicacion": "Descripcion detallada de los indicadores visuales observados y recomendacion de siguiente paso"}
+    """
+    
+    try:
+        response = _gemini_generate([prompt, img])
+        text = response.text
+        start = text.find('{')
+        end = text.rfind('}') + 1
+        if start != -1 and end != -1:
+            result = json.loads(text[start:end])
+            return jsonify(result)
+        return jsonify({"porcentaje": "Desconocido", "explicacion": text})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        return jsonify({"error": "Error inesperado al procesar la imagen."}), 500
+
+@app.route('/api/nutricion/analizar-comida', methods=['POST'])
+def analizar_comida_ia():
+    if not client:
+        return jsonify({"error": "Configuración de IA no disponible"}), 503
+        
+    if 'foto' not in request.files:
+        return jsonify({"error": "No se subió ninguna imagen"}), 400
+        
+    file = request.files['foto']
+    img = Image.open(file.stream)
+
+    prompt = """
+    Eres un nutricionista deportivo certificado con especializacion en analisis de alimentos.
+    Analiza esta imagen de comida con precision profesional.
+
+    PROCESO DE ANALISIS:
+    1. Identifica TODOS los alimentos visibles en el plato
+    2. Estima las porciones por volumen visual y tamano relativo
+    3. Aplica la base de datos nutricional USDA/FoodData Central para los calculos
+    4. Suma los macros de cada componente
+    5. Ajusta por metodo de coccion visible (frito, hervido, al horno, etc.)
+
+    CRITERIOS DE ESTIMACION:
+    - Se conservador en las porciones cuando hay duda
+    - Los platos tipicos caseros: 300-500 kcal
+    - Platos de restaurante: pueden ser 600-1200 kcal
+    - Identifica salsas, aceites y aderezos que elevan significativamente las calorias
+
+    CALIDAD NUTRICIONAL:
+    Evalua del 1-10 la calidad nutricional del plato (10 = muy saludable, balanceado)
+
+    Responde UNICAMENTE en formato JSON:
+    {
+      "nombre": "Nombre descriptivo y apetitoso del plato identificado",
+      "calorias": 0,
+      "proteinas": 0,
+      "carbohidratos": 0,
+      "grasas": 0,
+      "fibra": 0,
+      "calidad": 7,
+      "explicacion": "Lista de alimentos identificados con sus porciones estimadas y nota sobre la calidad nutricional"
+    }
+    """
+
+    try:
+        response = _gemini_generate([prompt, img])
+        text = response.text
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "{" in text:
+            text = text[text.find("{"):text.rfind("}")+1]
+            
+        result = json.loads(text)
+        return jsonify(result)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        return jsonify({"error": "Error inesperado al analizar la comida."}), 500
+
+@app.route('/api/nutricion/chat', methods=['POST'])
+def chat_nutricion():
+    if not client:
+        return jsonify({"error": "Configuración de IA no disponible"}), 503
+    
+    data = request.json
+    user_id = data.get('user_id')
+    mensaje_usuario = data.get('mensaje')
+    plan_actual = data.get('plan_actual')
+    
+    # Obtener contexto del usuario
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT peso, estatura, edad, grasa_corporal, objetivo, alergias, alimentos FROM clientes WHERE user_id=?", (user_id,))
+    user_context = cursor.fetchone()
+    conn.close()
+
+    if not user_context:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # Calcular IMC para dar contexto al agente
+    try:
+        imc = float(user_context[0]) / ((float(user_context[1]) / 100) ** 2)
+        imc_str = f"{imc:.1f}"
+    except Exception:
+        imc_str = "no calculado"
+
+    contexto_str = f"""
+    == PERFIL COMPLETO DEL ATLETA ==
+    - Peso actual: {user_context[0]} kg
+    - Estatura: {user_context[1]} cm
+    - Edad: {user_context[2]} anos
+    - % Grasa corporal estimado: {user_context[3]}
+    - IMC calculado: {imc_str}
+    - Objetivo principal: {user_context[4]}
+    - Alergias / intolerancias (NO incluir): {user_context[5] or 'Ninguna reportada'}
+    - Alimentos preferidos / disponibles: {user_context[6] or 'Sin restriccion'}
+    """
+
+    prompt = f"""
+    Eres NutriCoach Pro, agente de nutricion deportiva de alto rendimiento de StrengthOS.
+
+    {contexto_str}
+
+    == PLAN NUTRICIONAL ACTUAL ==
+    {plan_actual}
+    == FIN DEL PLAN ==
+
+    == SOLICITUD DEL ENTRENADOR ==
+    "{mensaje_usuario}"
+
+    == TUS RESPONSABILIDADES ==
+    1. ANALIZA la solicitud: cambio de alimento, ajuste de macros, pregunta nutricional o variedad.
+    2. CAMBIO DE ALIMENTO: sustituye manteniendo macros equivalentes. Explica el equivalente nutricional.
+    3. PREGUNTA NUTRICIONAL: responde con informacion cientifica concisa.
+    4. AJUSTE DE OBJETIVO: recalcula TMB/TDEE y ajusta deficit/superavit.
+    5. Mantén el equilibrio calorico a menos que se pida cambiarlo.
+    6. NUNCA elimines comidas, solo modifica lo necesario.
+
+    == FORMATO OBLIGATORIO DE RESPUESTA ==
+    1. Bloque de explicacion breve (2-3 lineas en cursiva con *texto*).
+    2. El PLAN COMPLETO ACTUALIZADO usando tablas Markdown:
+
+    | Hora y Comida | Alimentos y Porciones (gramos) | Proteina | Carbos | Grasas | Kcal |
+    |:-------------:|:-------------------------------|:--------:|:------:|:------:|:----:|
+    | 7:00am - Desayuno | Alimento: Xg | Xg | Xg | Xg | X |
+    | ... | ... | ... | ... | ... | ... |
+    | **TOTALES** | | **Xg** | **Xg** | **Xg** | **X** |
+
+    3. Al final: el bloque <json_meals> con TODAS las comidas actualizadas.
+
+    Reglas de tabla:
+    - Columnas numericas alineadas a la derecha ( ---: )
+    - Columnas de texto alineadas a la izquierda ( :--- )
+    - Columnas de cabecera centradas ( :---: )
+
+    Responde en espanol. Tono: coach de alto rendimiento, directo y motivador.
+
+    IMPORTANTE - bloque <json_meals>:
+    <json_meals>
+    [
+      {{"nombre": "7:00am - Desayuno: ...", "calorias": 0, "proteinas": 0, "carbohidratos": 0, "grasas": 0}},
+      ...
+    ]
+    </json_meals>
+    """
+
+    try:
+        response = _gemini_generate(prompt)
+        text_response = response.text
+        
+        plan = text_response
+        meals_json_str = ""
+        
+        start_tag = "<json_meals>"
+        end_tag = "</json_meals>"
+        if start_tag in text_response and end_tag in text_response:
+            plan = text_response.split(start_tag)[0].strip()
+            meals_json_str = text_response.split(start_tag)[1].split(end_tag)[0].strip()
+
+        # Actualizar el plan en la BD
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE clientes SET plan_nutricional=? WHERE user_id=?", (plan, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"plan": plan, "meals_json": meals_json_str})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        return jsonify({"error": "Error inesperado al modificar el plan."}), 500
+
+@app.route('/api/nutricion/generar', methods=['POST'])
+def generar_plan_nutricion():
+    if not client:
+        return jsonify({"error": "Configuración de IA no disponible (falta GEMINI_API_KEY)"}), 503
+    
+    data = request.json
+    peso = data.get('peso')
+    estatura = data.get('estatura')
+    edad = data.get('edad')
+    grasa = data.get('grasa_corporal')
+    objetivo = data.get('objetivo')
+    alergias = data.get('alergias', 'Ninguna')
+    alimentos = data.get('alimentos', 'No especificado')
+    user_id = data.get('user_id')
+
+    prompt = f"""
+    Eres NutriCoach Pro, el agente de inteligencia artificial de StrengthOS especializado en
+    nutricion deportiva de alto rendimiento. Combinas el conocimiento de:
+    - Dietista-Nutricionista Deportivo certificado (ISSN, NSCA)
+    - Coach de composicion corporal
+    - Fisiologo del ejercicio
+
+    == DATOS DEL ATLETA ==
+    - Peso: {peso} kg | Estatura: {estatura} cm | Edad: {edad} anos | % Grasa: {grasa}
+    - Objetivo: {objetivo}
+    - ALERGIAS (EXCLUIR ABSOLUTAMENTE): {alergias}
+    - Alimentos preferidos / disponibles: {alimentos}
+
+    == PASO 1: CALCULOS FISIOLOGICOS ==
+    Calcula y muestra en una tabla Markdown:
+    a) TMB (Mifflin-St Jeor)
+    b) TDEE segun nivel de actividad moderado-alto
+    c) Calorias objetivo ajustadas segun meta
+    d) Distribucion de macros diarios (g y % del total)
+
+    FORMATO OBLIGATORIO para los calculos (tabla Markdown):
+    | Metrica | Valor |
+    |:--------|------:|
+    | TMB     | X kcal |
+    | TDEE    | X kcal |
+    | Objetivo calorico | X kcal |
+    | Proteina objetivo | Xg (X%) |
+    | Carbohidratos objetivo | Xg (X%) |
+    | Grasas objetivo | Xg (X%) |
+
+    == PASO 2: PLAN ALIMENTICIO DIARIO ==
+    Crea el plan en una tabla Markdown con EXACTAMENTE estas columnas centradas:
+
+    | Hora y Comida | Alimentos y Porciones (gramos) | Proteina | Carbos | Grasas | Kcal |
+    |:-------------:|:-------------------------------|:--------:|:------:|:------:|:----:|
+
+    REGLAS DEL PLAN:
+    - 4 a 6 comidas con hora especifica (7:00am, 10:00am, etc.)
+    - Nombre de cada alimento con su porcion en gramos
+    - Valores de macros por fila en formato: 35g / 52g / 14g / 493
+    - Distribuye proteina uniformemente (30-40g por comida)
+    - Carbohidratos altos antes y despues del entrenamiento
+    - Ultima comida: alta en proteina de digestion lenta
+    - RESPETA ABSOLUTAMENTE las alergias
+    - Fila final de TOTALES del dia
+
+    == PASO 3: ESTRATEGIAS ==
+    Presenta en subtablas separadas:
+
+    ### Timing Nutricional
+    | Momento | Que comer | Por que |
+    |:-------:|:----------|:-------|
+
+    ### Hidratacion y Suplementacion
+    | Suplemento/Hidratacion | Dosis | Momento | Evidencia |
+    |:----------------------:|:-----:|:-------:|:---------:|
+
+    == PASO 4: INDICADORES DE PROGRESO ==
+    Tabla con 3 metricas clave:
+    | Metrica | Frecuencia | Como medirla |
+    |:-------:|:----------:|:------------:|
+
+    == REGLAS DE FORMATO ESTRICTAS ==
+    - USA TABLAS MARKDOWN para TODA la informacion estructurada.
+    - Alinea columnas numericas a la derecha ( ---: )
+    - Alinea columnas de texto a la izquierda ( :--- )
+    - Columnas de titulo/categoria al centro ( :---: )
+    - Usa ## para titulos de seccion y ### para subsecciones.
+    - Agrega emojis al inicio de cada ## titulo para identificar secciones.
+    - Tono: Coach de alto rendimiento. Responde en ESPANOL.
+    - NO uses listas de puntos para informacion que cabe en tabla.
+
+    OBLIGATORIO AL FINAL: bloque <json_meals> con todas las comidas.
+    Incluye un campo "ingredientes" con la lista EXACTA de alimentos y cantidades.
+    <json_meals>
+    [
+      {{
+        "nombre": "7:00am - Desayuno: Avena con huevos y platano",
+        "calorias": 520, "proteinas": 35, "carbohidratos": 58, "grasas": 14,
+        "ingredientes": ["80g avena en hojuelas", "4 huevos enteros", "2 claras de huevo", "1 platano mediano (100g)", "10ml aceite de oliva"]
+      }},
+      {{
+        "nombre": "10:00am - Snack: Yogur con frutos secos",
+        "calorias": 220, "proteinas": 18, "carbohidratos": 15, "grasas": 10,
+        "ingredientes": ["200g yogur griego 0%", "30g nueces mixtas", "1 cucharada miel"]
+      }}
+    ]
+    </json_meals>
+    """
+
+    try:
+        response = _gemini_generate(prompt)
+        text_response = response.text
+        
+        # Separar el plan (Markdown) del JSON
+        plan = text_response
+        meals_json_str = ""
+        
+        start_tag = "<json_meals>"
+        end_tag = "</json_meals>"
+        if start_tag in text_response and end_tag in text_response:
+            plan = text_response.split(start_tag)[0].strip()
+            meals_json_str = text_response.split(start_tag)[1].split(end_tag)[0].strip()
+
+        # Guardar en la base de datos si se proporciona user_id
+        if user_id:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE clientes SET peso=?, estatura=?, edad=?, grasa_corporal=?, objetivo=?, alergias=?, alimentos=?, plan_nutricional=?, json_meals_cache=? WHERE user_id=?",
+                (peso, estatura, edad, grasa, objetivo, alergias, alimentos, plan, meals_json_str, user_id)
+            )
+            conn.commit()
+            conn.close()
+
+        return jsonify({"plan": plan, "meals_json": meals_json_str})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error al generar el plan: {type(e).__name__}: {str(e)}"}), 500
+
+@app.route('/api/nutricion/<user_id>', methods=['GET'])
+def obtener_nutricion(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT peso, estatura, edad, grasa_corporal, objetivo, alimentos, plan_nutricional, alergias FROM clientes WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return jsonify({
+            "peso": row[0],
+            "estatura": row[1],
+            "edad": row[2],
+            "grasa_corporal": row[3],
+            "objetivo": row[4],
+            "alimentos": row[5],
+            "plan_nutricional": row[6],
+            "alergias": row[7] or ""
+        })
+    return jsonify({"error": "No encontrado"}), 404
+
+@app.route('/api/nutricion/<user_id>/enviar-dia', methods=['POST'])
+def enviar_plan_dia(user_id):
+    """
+    El admin llama a este endpoint para copiar las comidas del plan JSON guardado
+    a la tabla de comidas de HOY para ese usuario (limpia primero las del día).
+    """
+    hoy = datetime.date.today().isoformat()
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # Obtener las comidas guardadas en JSON del plan (columna json_meals_cache)
+    cursor.execute("SELECT json_meals_cache FROM clientes WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+
+    if not row or not row[0]:
+        conn.close()
+        return jsonify({"error": "No hay comidas de plan guardadas. Genera el plan primero."}), 404
+
+    try:
+        meals = json.loads(row[0])
+    except json.JSONDecodeError:
+        conn.close()
+        return jsonify({"error": "El plan guardado tiene formato incorrecto."}), 400
+
+    # Borrar las comidas de HOY para este usuario (las del plan, no manuales)
+    cursor.execute(
+        "DELETE FROM comidas WHERE user_id=? AND dia=? AND fuente='plan'",
+        (user_id, hoy)
+    )
+
+    # Insertar cada comida del plan como nueva entrada de hoy
+    insertadas = 0
+    for meal in meals:
+        nombre        = meal.get('nombre', 'Comida')
+        calorias      = int(meal.get('calorias', 0))
+        proteinas     = int(meal.get('proteinas', 0))
+        carbohidratos = int(meal.get('carbohidratos', 0))
+        grasas        = int(meal.get('grasas', 0))
+        ingredientes  = json.dumps(meal.get('ingredientes', []), ensure_ascii=False)
+        cursor.execute(
+            "INSERT INTO comidas (user_id, dia, nombre, calorias, proteinas, carbohidratos, grasas, completado, fuente, detalle) VALUES (?,?,?,?,?,?,?,0,'plan',?)",
+            (user_id, hoy, nombre, calorias, proteinas, carbohidratos, grasas, ingredientes)
+        )
+        insertadas += 1
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"mensaje": "Plan enviado correctamente", "comidas_enviadas": insertadas, "dia": hoy})
+
+
+@app.route('/api/nutricion/<user_id>/enviar-rango', methods=['POST'])
+def enviar_plan_rango(user_id):
+    """
+    Envía el plan guardado para los próximos N días.
+    Body JSON: { "dias": 7 }
+    """
+    data = request.json or {}
+    dias = max(1, min(int(data.get('dias', 7)), 30))  # entre 1 y 30
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # Obtener las comidas del plan guardado
+    cursor.execute("SELECT json_meals_cache FROM clientes WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+
+    if not row or not row[0]:
+        conn.close()
+        return jsonify({"error": "No hay comidas de plan guardadas. Genera el plan primero."}), 404
+
+    try:
+        meals = json.loads(row[0])
+    except json.JSONDecodeError:
+        conn.close()
+        return jsonify({"error": "El plan guardado tiene formato incorrecto."}), 400
+
+    hoy      = datetime.date.today()
+    total    = 0
+    enviados = 0
+
+    for offset in range(dias):
+        dia_str = (hoy + datetime.timedelta(days=offset)).isoformat()
+
+        # Borrar comidas de tipo 'plan' de ese día
+        cursor.execute(
+            "DELETE FROM comidas WHERE user_id=? AND dia=? AND fuente='plan'",
+            (user_id, dia_str)
+        )
+
+        # Insertar cada comida
+        for meal in meals:
+            nombre        = meal.get('nombre', 'Comida')
+            calorias      = int(meal.get('calorias', 0))
+            proteinas     = int(meal.get('proteinas', 0))
+            carbohidratos = int(meal.get('carbohidratos', 0))
+            grasas        = int(meal.get('grasas', 0))
+            ingredientes  = json.dumps(meal.get('ingredientes', []), ensure_ascii=False)
+            cursor.execute(
+                "INSERT INTO comidas (user_id, dia, nombre, calorias, proteinas, carbohidratos, grasas, completado, fuente, detalle) VALUES (?,?,?,?,?,?,?,0,'plan',?)",
+                (user_id, dia_str, nombre, calorias, proteinas, carbohidratos, grasas, ingredientes)
+            )
+            total += 1
+        enviados += 1
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "mensaje": f"Plan enviado para {enviados} días",
+        "dias_enviados": enviados,
+        "total_comidas": total,
+        "desde": hoy.isoformat(),
+        "hasta": (hoy + datetime.timedelta(days=dias - 1)).isoformat()
+    })
+
+
 if __name__ == '__main__':
     # Usar puerto de sistema (Fly.io/Render) o 5000 por defecto
     port = int(os.environ.get('PORT', 5000))
     print(f"Servidor iniciado en el puerto {port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
+
 

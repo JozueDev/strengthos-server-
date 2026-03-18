@@ -1,4 +1,4 @@
-const CACHE_NAME = 'strengthos-cache-v4';
+const CACHE_NAME = 'strengthos-cache-v5';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -6,8 +6,13 @@ const urlsToCache = [
     '/calendar.html',
     '/progress.html',
     '/security.html',
+    '/nutrition.html',
+    '/nutrition.js',
+    '/comidas.html',
+    '/comidas.js',
     '/admin.html',
     '/admin-routines.html',
+    '/admin-nutrition.html',
     '/admin-progress.html',
     '/styles.css',
     '/script.js',

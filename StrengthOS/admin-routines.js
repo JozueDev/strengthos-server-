@@ -1,4 +1,12 @@
 // admin-routines.js — Editor de rutinas por cliente (página dedicada)
+const userDataStr = localStorage.getItem("strengthos_user") || sessionStorage.getItem("strengthos_user");
+if (!userDataStr) {
+    window.location.href = "index.html";
+}
+const authData = JSON.parse(userDataStr);
+if (!authData.es_admin) {
+    window.location.href = "dashboard.html";
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:5000/api' : '/api';

@@ -2,3 +2,6 @@ Flask
 Flask-Cors
 Werkzeug
 gunicorn
+google-generativeai
+python-dotenv
+Pillow

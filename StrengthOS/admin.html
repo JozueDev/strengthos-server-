@@ -12,6 +12,18 @@
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=06009">
     <link rel="icon" type="image/png" href="images/logo.png">
+    <script>
+        // Protección de ruta Admin
+        const userDataStr = localStorage.getItem("strengthos_user") || sessionStorage.getItem("strengthos_user");
+        if (!userDataStr) {
+            window.location.href = "index.html";
+        } else {
+            const authData = JSON.parse(userDataStr);
+            if (!authData.es_admin) {
+                window.location.href = "dashboard.html";
+            }
+        }
+    </script>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#000000">
     <style>
@@ -276,33 +288,6 @@
             color: var(--primary-300);
         }
 
-        /* Responsive */
-        @media (max-width: 860px) {
-            .admin-grid {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-
-            .admin-form-sticky {
-                position: static;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .client-name {
-                font-size: 0.9rem;
-            }
-
-            .action-icon-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 0.9rem;
-            }
-
-            .profile-stat-value {
-                font-size: 0.95rem;
-            }
-        }
     </style>
 </head>
 

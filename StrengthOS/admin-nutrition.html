@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Gestionar Nutrición | Admin StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=06010">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .nutrition-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 100px 20px 60px;
+        }
+
+        .nutrition-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .form-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: clamp(20px, 5vw, 32px);
+            width: 100%;
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-primary);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
+            border-color: var(--primary-500);
+            background: rgba(0, 0, 0, 0.5);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+        }
+
+        .photo-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .photo-upload:hover {
+            border-color: var(--primary-400);
+            background: rgba(var(--primary-rgb), 0.03);
+        }
+
+        .btn-ai {
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn-ai:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+        }
+
+        /* ── Plan Display Premium ── */
+        .plan-display {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        /* Tablas */
+        .plan-display table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin: 20px auto;
+            display: table;
+        }
+
+        .plan-display thead th {
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.3), rgba(var(--primary-rgb), 0.15));
+            color: var(--primary-100);
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 14px 18px;
+            text-align: center;
+            border-bottom: 2px solid rgba(var(--primary-rgb), 0.3);
+            white-space: nowrap;
+        }
+
+        .plan-display tbody tr {
+            transition: background 0.2s;
+        }
+
+        .plan-display tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .plan-display tbody tr:hover {
+            background: rgba(var(--primary-rgb), 0.06);
+        }
+
+        .plan-display tbody td {
+            padding: 14px 18px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .plan-display tbody td:first-child {
+            font-weight: 700;
+            color: var(--primary-100);
+            text-align: left;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .plan-display tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Scroll horizontal en móvil */
+        .plan-display .table-wrapper,
+        .plan-display > div {
+            overflow-x: auto;
+        }
+
+        /* Headings */
+        .plan-display h1, .plan-display h2 {
+            color: var(--primary-100);
+            margin: 28px 0 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(var(--primary-rgb), 0.2);
+        }
+
+        .plan-display h3 {
+            color: #e2e8f0;
+            margin: 22px 0 10px;
+            font-size: 1.05rem;
+        }
+
+        .plan-display h4 {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 18px 0 8px;
+        }
+
+        /* Listas */
+        .plan-display ul, .plan-display ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .plan-display li {
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        .plan-display li::marker {
+            color: var(--primary-400);
+        }
+
+        /* Blockquote / Resumen ejecutivo */
+        .plan-display blockquote {
+            border-left: 3px solid var(--primary-500);
+            margin: 16px 0;
+            padding: 14px 20px;
+            background: rgba(var(--primary-rgb), 0.06);
+            border-radius: 0 12px 12px 0;
+            color: var(--text-primary);
+            font-style: normal;
+        }
+
+        /* Código / valores numéricos */
+        .plan-display code {
+            background: rgba(var(--primary-rgb), 0.15);
+            color: var(--primary-200);
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.85em;
+        }
+
+        /* Separadores */
+        .plan-display hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 24px 0;
+        }
+
+        /* Negrita */
+        .plan-display strong {
+            color: #f1f5f9;
+            font-weight: 700;
+        }
+
+        /* Párrafos */
+        .plan-display p {
+            margin: 10px 0;
+        }
+
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            border-radius: 24px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary-400);
+            border-radius: 50%;
+            animation: spin 1s infinite cubic-bezier(0.5, 0, 0.5, 1);
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) {
+            .nutrition-page { padding: 80px 15px 40px; }
+            .form-card { padding: 20px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-content">
+            <a href="admin.html" class="logo-container">
+                <img src="images/logo.png" alt="StrengthOS Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+            <div class="nav-links">
+                <a href="admin.html" class="nav-link">Gestión de Clientes</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="nutrition-page">
+        <div class="section-header" style="text-align: center; margin-bottom: 40px; width: 100%; max-width: 600px;">
+            <h1 style="font-size: clamp(1.8rem, 5vw, 2.5rem); margin-bottom: 10px;">Plan: <span id="client-name-title" style="color: var(--primary-400);">---</span></h1>
+            <p style="color: var(--text-tertiary); font-size: 1rem;">Configura la nutrición personalizada de tu atleta con IA.</p>
+        </div>
+
+        <div class="nutrition-container">
+            <!-- Resumen de Datos del Atleta (Solo Lectura) -->
+            <div class="form-card" style="border: 2px solid rgba(var(--primary-rgb), 0.2); background: rgba(var(--primary-rgb), 0.03);">
+                <h2 class="section-title">👤 Perfil Físico del Atleta</h2>
+                <p style="font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 20px;">Datos proporcionados y actualizados por el usuario.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                    <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 16px;">
+                        <span style="display: block; font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Peso</span>
+                        <span id="nutri-peso-display" style="font-size: 1.2rem; font-weight: 700; color: var(--primary-100);">-- kg</span>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 16px;">
+                        <span style="display: block; font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Estatura</span>
+                        <span id="nutri-estatura-display" style="font-size: 1.2rem; font-weight: 700; color: var(--primary-100);">-- cm</span>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 16px;">
+                        <span style="display: block; font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Edad</span>
+                        <span id="nutri-edad-display" style="font-size: 1.2rem; font-weight: 700; color: var(--primary-100);">-- años</span>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 16px;">
+                        <span style="display: block; font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">% Grasa</span>
+                        <span id="nutri-grasa-display" style="font-size: 1.2rem; font-weight: 700; color: var(--primary-100);">-- %</span>
+                    </div>
+                </div>
+                <!-- Inputs ocultos para mantener compatibilidad con el JS actual de generación -->
+                <input type="hidden" id="nutri-peso">
+                <input type="hidden" id="nutri-estatura">
+                <input type="hidden" id="nutri-edad">
+                <input type="hidden" id="nutri-grasa">
+            </div>
+
+            <!-- Objetivos -->
+            <div class="form-card">
+                <h2 class="section-title">🎯 Configuración de Objetivos</h2>
+                <div class="input-group">
+                    <label>Meta del Atleta</label>
+                    <select id="nutri-objetivo">
+                        <option value="Perder grasa">Perder Grasa (Definición)</option>
+                        <option value="Ganar músculo">Ganar Músculo (Volumen)</option>
+                        <option value="Mantenimiento">Mantenimiento / Recomposición</option>
+                        <option value="Mejorar salud">Salud General / Bienestar</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Alergias / Intolerancias</label>
+                    <input type="text" id="nutri-alergias" placeholder="Ninguna">
+                </div>
+                <div class="input-group">
+                    <label>Alimentos Disponibles / Preferidos</label>
+                    <textarea id="nutri-alimentos" rows="4" placeholder="Ej: Pollo, arroz, huevos..."></textarea>
+                </div>
+            </div>
+
+            <!-- Generación -->
+            <div style="padding: 20px 0; display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn-ai" id="btn-generate-plan" style="padding: 22px;">
+                    ✨ Generar y Asignar Plan con IA
+                </button>
+
+                <!-- Enviar solo hoy -->
+                <button class="btn-ai" id="btn-send-plan"
+                    style="padding: 16px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 15px rgba(22,163,74,0.3);">
+                    📤 Enviar Plan de Hoy
+                </button>
+
+                <!-- Enviar para múltiples días -->
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn-ai" id="btn-send-days"
+                        style="flex:1; padding: 14px; background: linear-gradient(135deg, #0369a1 0%, #075985 100%); box-shadow: 0 4px 15px rgba(3,105,161,0.3); font-size:0.9rem;">
+                        📅 Enviar para los próximos
+                    </button>
+                    <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 14px;">
+                        <input type="number" id="input-dias" value="7" min="1" max="30"
+                            style="width:48px; background:transparent; border:none; color:white; font-size:1rem; font-weight:700; font-family:inherit; text-align:center;">
+                        <span style="font-size:0.8rem; color:var(--text-tertiary);">días</span>
+                    </div>
+                </div>
+
+                <p id="send-status" style="text-align:center; font-size:0.8rem; color:var(--text-tertiary); min-height:18px;"></p>
+            </div>
+
+
+            <!-- Resultado del Plan -->
+            <div class="form-card" style="padding: 0; position: relative; overflow: hidden; min-height: 200px;">
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="spinner"></div>
+                    <p id="loading-text" style="margin-top: 15px; font-weight: 600;">Cocinando plan con IA...</p>
+                </div>
+                
+                <div id="plan-empty" style="padding: 60px; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;">🍽️</div>
+                    <h3 style="opacity: 0.5;">El plan aparecerá aquí</h3>
+                </div>
+
+                <div id="plan-result-wrapper" style="display: none;">
+                    <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; background: rgba(255,255,255,0.02);">
+                        <button id="btn-edit-plan" class="status-badge" style="cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 16px; border-radius: 10px;">✏️ Editar</button>
+                        <button id="btn-save-plan" class="status-badge" style="cursor: pointer; display: none; background: rgba(var(--primary-rgb), 0.3); border: 1px solid var(--primary-500); color: white; padding: 8px 16px; border-radius: 10px;">💾 Guardar</button>
+                        <button id="btn-delete-plan-manual" class="btn-danger-outline" style="margin: 0; padding: 8px 16px;">🗑️ Eliminar Plan</button>
+                    </div>
+                    
+                    <div id="plan-result" class="plan-display"></div>
+                    <textarea id="plan-editor" class="plan-display" style="display: none; width: 100%; min-height: 500px; border: none; background: transparent; color: var(--text-primary); font-family: 'Courier New', Courier, monospace; font-size: 0.95rem; resize: vertical; padding: 30px;"></textarea>
+                    
+                    <!-- Chat IA -->
+                    <div style="margin: 30px; padding: 25px; background: rgba(var(--primary-rgb), 0.05); border: 1px solid rgba(var(--primary-rgb), 0.1); border-radius: 20px; text-align: left;">
+                        <h4 style="margin-bottom: 15px; color: var(--primary-100); display: flex; align-items: center; gap: 10px;">
+                            💬 Ajustar Plan con IA
+                        </h4>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="chat-input" placeholder="Ej: Cambia el arroz por papa..." style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; color: white;">
+                            <button id="btn-chat-send" style="background: var(--primary-600); border: none; border-radius: 12px; padding: 0 24px; color: white; cursor: pointer; font-weight: 700;">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=06010"></script>
+    <script src="admin-nutrition.js?v=06011"></script>
+</body>
+</html>

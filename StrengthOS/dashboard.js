@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Validar sesión
-    const userDataStr = sessionStorage.getItem("strengthos_user");
+    const userDataStr = localStorage.getItem("strengthos_user") || sessionStorage.getItem("strengthos_user");
     if (!userDataStr) {
         alert("Debes iniciar sesión para acceder a esta página.");
         window.location.href = "index.html";
@@ -301,8 +301,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-back-calendar")?.addEventListener("click", () => switchView(viewCalendar, navBtnCalendar));
 
     // 3. Cerrar Sesión
-    document.getElementById("logout-btn").addEventListener("click", (e) => {
+    document.getElementById("logout-btn")?.addEventListener("click", (e) => {
         e.preventDefault();
+        localStorage.removeItem("strengthos_user");
         sessionStorage.removeItem("strengthos_user");
         window.location.href = "index.html";
     });

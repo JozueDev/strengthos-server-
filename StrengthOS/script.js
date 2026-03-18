@@ -1,4 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. Redirigir si ya hay sesión (Evita que el usuario logueado caiga en el index)
+    const userDataStr = sessionStorage.getItem("strengthos_user");
+    if (userDataStr && window.location.pathname.endsWith("index.html") || window.location.pathname === "/") {
+        const userData = JSON.parse(userDataStr);
+        if (userData.es_admin) {
+            window.location.href = "admin.html";
+        } else {
+            window.location.href = "dashboard.html";
+        }
+    }
+
     // Navbar Sticky
     const navbar = document.getElementById("navbar");
     window.addEventListener("scroll", () => {
@@ -152,12 +163,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Guardar sesión para ambos (Admin y Cliente)
+                    localStorage.setItem("strengthos_user", JSON.stringify(data.cliente));
+                    sessionStorage.setItem("strengthos_user", JSON.stringify(data.cliente));
+
                     if (data.cliente.es_admin) {
                         alert(`¡Bienvenido/a de nuevo, Entrenador! Ingresando al panel de control...`);
                         window.location.href = "admin.html";
                     } else {
-                        alert(`¡Bienvenido/a de nuevo, ${data.cliente.nombre}! Redirigiendo a tu App personal...`);
-                        sessionStorage.setItem("strengthos_user", JSON.stringify(data.cliente));
+                        alert(`¡Bienvenido/a de nuevo, ${data.cliente.nombre}!`);
                         window.location.href = "dashboard.html";
                     }
                 } else {

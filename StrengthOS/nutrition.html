@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Mi Nutrición | StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=06013">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .nutrition-page {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 100px 20px 60px;
+        }
+
+        /* ── Page Header ── */
+        .page-hero {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .page-hero h1 {
+            font-size: clamp(1.8rem, 4vw, 2.4rem);
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .page-hero p { color: var(--text-tertiary); font-size: 0.95rem; }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 22px;
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+
+        /* ── Progress Bar ── */
+        .day-progress {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .progress-label { font-size: 0.8rem; color: var(--text-tertiary); }
+        .progress-pct { font-size: 0.9rem; font-weight: 700; color: var(--primary-100); }
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.07);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--primary-500), #22c55e);
+            transition: width 0.5s ease;
+        }
+
+        /* ── Meal List ── */
+        .meal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .meal-item {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .meal-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(var(--primary-rgb), 0.3);
+            transform: translateX(3px);
+        }
+
+        .meal-item.completed {
+            background: rgba(34, 197, 94, 0.04);
+            border-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .meal-item.completed .meal-name {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        /* Custom Checkbox */
+        .check-circle {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid rgba(var(--primary-rgb), 0.4);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        .meal-item.completed .check-circle {
+            background: #22c55e;
+            border-color: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .check-circle svg {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .meal-item.completed .check-circle svg { opacity: 1; }
+
+        .meal-info { flex: 1; min-width: 0; }
+        .meal-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .meal-macros {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .macro-badge {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .badge-kcal { background: rgba(251,191,36,0.12); color: #fbbf24; }
+        .badge-p   { background: rgba(248,113,113,0.12); color: #f87171; }
+        .badge-c   { background: rgba(96,165,250,0.12);  color: #60a5fa; }
+        .badge-g   { background: rgba(167,243,208,0.12); color: #6ee7b7; }
+
+        /* ── Expand Button ── */
+        .expand-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+            margin-left: auto;
+        }
+        .expand-btn:hover {
+            background: rgba(var(--primary-rgb), 0.12);
+            border-color: rgba(var(--primary-rgb), 0.3);
+            color: var(--primary-100);
+        }
+        .expand-btn svg {
+            transition: transform 0.3s ease;
+        }
+        .meal-item.expanded .expand-btn svg {
+            transform: rotate(180deg);
+        }
+
+        /* ── Detail Panel ── */
+        .meal-detail {
+            width: 100%;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.25s ease,
+                        padding 0.3s ease;
+            opacity: 0;
+            padding: 0 0 0 42px;
+        }
+        .meal-item.expanded .meal-detail {
+            max-height: 400px;
+            opacity: 1;
+            padding: 12px 0 4px 42px;
+        }
+
+        .ingredients-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .ingredients-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 12px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 16px;
+        }
+
+        .ingredients-list li {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .ingredients-list li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(var(--primary-rgb), 0.6);
+            flex-shrink: 0;
+        }
+
+        .detail-macros-row {
+            display: flex;
+            gap: 14px;
+            font-size: 0.75rem;
+            flex-wrap: wrap;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 4px;
+        }
+
+        .detail-macros-row strong {
+            font-size: 0.85rem;
+        }
+
+        .detail-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.05);
+            margin: 4px 0 12px 0;
+        }
+
+
+
+
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; opacity: 0.6; }
+        .empty-state p { font-size: 0.85rem; opacity: 0.4; }
+
+        /* ── Stats Panel ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-val { font-size: 1.4rem; font-weight: 800; margin-bottom: 2px; }
+        .stat-lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); }
+
+        .chart-wrap {
+            position: relative;
+            height: 190px;
+            margin: 4px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-center-label {
+            position: absolute;
+            text-align: center;
+            pointer-events: none;
+        }
+        .chart-kcal { font-size: 1.6rem; font-weight: 800; color: var(--primary-100); display: block; }
+        .chart-sub  { font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+
+        /* ── Layout ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Date Nav ── */
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .date-nav input[type="date"] {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 7px 12px;
+            color: white;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-100);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <nav class="navbar scrolled">
+        <div class="container nav-content">
+            <a href="dashboard.html" class="logo-container">
+                <img src="images/logo.png" alt="Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="nutrition-page">
+
+        <div class="page-hero">
+            <h1>🥗 Mi Plan Alimenticio</h1>
+            <p id="greeting-sub">Marca tus comidas conforme las vayas completando</p>
+        </div>
+
+        <div class="main-grid">
+
+            <!-- Columna izquierda: Checklist -->
+            <div>
+                <div class="card">
+                    <div class="section-header">
+                        <h2 class="section-title">📅 Comidas de Hoy</h2>
+                        <div class="date-nav">
+                            <input type="date" id="date-picker">
+                        </div>
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div class="day-progress">
+                        <span class="progress-label" id="progress-text">0 de 0 comidas</span>
+                        <span class="progress-pct" id="progress-pct">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+                    </div>
+
+                    <div class="meal-list" id="meal-list">
+                        <!-- meals renderized by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: Gráfica de macros -->
+            <div>
+                <div class="card">
+                    <h2 class="section-title" style="margin-bottom:16px;">📊 Macros Consumidos</h2>
+
+                    <div class="chart-wrap">
+                        <canvas id="macros-chart"></canvas>
+                        <div class="chart-center-label">
+                            <span class="chart-kcal" id="total-kcal">0</span>
+                            <span class="chart-sub">kcal</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-val" id="total-p" style="color:#f87171;">0g</div>
+                            <div class="stat-lbl">Proteína</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val" id="total-c" style="color:#60a5fa;">0g</div>
+                            <div class="stat-lbl">Carbos</div>
+                        </div>
+                        <div class="stat-box" style="grid-column: span 2;">
+                            <div class="stat-val" id="total-g" style="color:#6ee7b7;">0g</div>
+                            <div class="stat-lbl">Grasas</div>
+                        </div>
+                    </div>
+
+                    <!-- Leyenda -->
+                    <div style="display:flex; gap:14px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--text-tertiary);">
+                            <div style="width:10px;height:10px;border-radius:50%;background:#f87171;"></div>Proteína
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--text-tertiary);">
+                            <div style="width:10px;height:10px;border-radius:50%;background:#60a5fa;"></div>Carbos
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--text-tertiary);">
+                            <div style="width:10px;height:10px;border-radius:50%;background:#6ee7b7;"></div>Grasas
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js?v=06013"></script>
+    <script src="nutrition.js?v=06013"></script>
+</body>
+</html>

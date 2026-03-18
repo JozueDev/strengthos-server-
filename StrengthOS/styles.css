@@ -56,9 +56,9 @@ a {
     color: inherit;
 }
 
-/* TipografÃ­a */
+/* Tipografía */
 h1 {
-    font-size: clamp(3rem, 5vw, 4.75rem);
+    font-size: clamp(2.2rem, 5vw, 4.75rem);
     font-weight: 800;
     line-height: 1.1;
     letter-spacing: -0.02em;
@@ -92,7 +92,12 @@ h3 {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 20px;
+}
+@media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
 }
 
 /* Glassmorphism Card */
@@ -213,7 +218,7 @@ h3 {
     }
 }
 
-/* PartÃ­culas */
+/* Partículas */
 .particles-container {
     position: fixed;
     top: 0;
@@ -299,6 +304,16 @@ h3 {
     font-weight: 800;
     font-size: 1.25rem;
     color: var(--text-primary);
+}
+@media (max-width: 400px) {
+    .logo-text {
+        font-size: 1.1rem;
+    }
+}
+@media (max-width: 350px) {
+    .logo-text {
+        display: none;
+    }
 }
 
 .nav-links {
@@ -425,7 +440,8 @@ h3 {
     border-radius: 12px;
     color: var(--text-primary);
     font-family: inherit;
-    font-size: 16px; /* Evita que iOS haga zoom automÃ¡tico al enfocar */
+    font-size: 16px;
+    /* Evita que iOS haga zoom automático al enfocar */
     transition: all 0.3s;
 }
 
@@ -1183,7 +1199,7 @@ h3 {
 ------------------------------ */
 @media (max-width: 600px) {
 
-    /* Reducir mÃ¡rgenes de las vistas principales */
+    /* Reducir márgenes de las vistas principales */
     .section-padding {
         padding: 60px 0;
     }
@@ -1201,7 +1217,7 @@ h3 {
         font-size: 0.85rem;
     }
 
-    /* Reducir el modal de inputs de repeticiones y notas para que quepa en pantalla pequeÃ±a */
+    /* Reducir el modal de inputs de repeticiones y notas para que quepa en pantalla pequeña */
     .modal-container {
         width: 95%;
         max-width: 100%;
@@ -1216,7 +1232,7 @@ h3 {
         max-height: 50vh;
     }
 
-    /* Reducir el padding interno de los contenedores de los grÃ¡ficos para que la grÃ¡fica tenga el 100% del ancho */
+    /* Reducir el padding interno de los contenedores de los gráficos para que la gráfica tenga el 100% del ancho */
     .chart-card {
         padding: 10px;
     }
@@ -1257,7 +1273,7 @@ h3 {
         padding-bottom: 0;
     }
 
-    /* Agregamos titulos descriptivos pequeÃ±os antes de los valores para entender que son */
+    /* Agregamos titulos descriptivos pequeños antes de los valores para entender que son */
     .clients-table td:nth-child(1)::before {
         content: "ID / Usuario:";
         font-size: 0.70rem;
@@ -1277,7 +1293,7 @@ h3 {
         margin-bottom: 6px;
     }
 
-    /* Acomodar los botones para celulares en cuadrÃ­cula limpia (2 arriba y 2 abajo) */
+    /* Acomodar los botones para celulares en cuadrícula limpia (2 arriba y 2 abajo) */
     .admin-action-buttons {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1292,4 +1308,168 @@ h3 {
         border-radius: 8px;
         margin: 0;
     }
+
+    /* Ajustes generales de texto para m?vil */
+    h1 { font-size: 1.8rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h3 { font-size: 1.2rem !important; }
+    
+    .section-header {
+        margin-bottom: 30px;
+    }
+    
+    .hero-title {
+        font-size: 2rem !important;
+    }
+
+    .navbar {
+        padding: 12px 0;
+    }
+    
+    .logo-img {
+        height: 32px;
+    }
+}
+
+
+/* ==========================================================================
+   GLOBAL MOBILE OPTIMIZATION (FOR ALL DEVICES)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* Layout & Containers */
+    .container {
+        padding: 0 16px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .section-padding {
+        padding: 60px 16px;
+    }
+
+    /* Grid systems */
+    .menu-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .services-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    /* Forms */
+    .glass-card, .form-card, .card {
+        padding: 20px !important;
+        border-radius: 16px !important;
+    }
+
+    .input-group {
+        width: 100%;
+    }
+
+    .input-group input, 
+    .input-group select, 
+    .input-group textarea {
+        padding: 12px !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* Header & Navigation */
+    .navbar {
+        padding: 10px 0 !important;
+    }
+
+    .nav-links {
+        display: none; /* Mobile menu should be implemented if needed, but for now we simplify */
+    }
+
+    .logo-text {
+        font-size: 1.1rem !important;
+    }
+
+    /* Text scale */
+    h1 { font-size: 1.6rem !important; }
+    h2 { font-size: 1.4rem !important; }
+    h3 { font-size: 1.2rem !important; }
+    .hero-title { font-size: 2rem !important; }
 }
+
+@media (max-width: 480px) {
+    .menu-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .profile-card {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        padding: 20px !important;
+    }
+
+    .profile-info {
+        width: 100% !important;
+    }
+
+    .profile-stats-row {
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+    }
+
+    .profile-stat-item {
+        min-width: 60px !important;
+    }
+
+    .edit-fields {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tracker-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Fix for iPhone SE & extreme small screens */
+@media (max-width: 360px) {
+    .logo-text {
+        display: none; /* Hide text if no space */
+    }
+
+    .section-padding {
+        padding: 40px 10px;
+    }
+
+    h1 { font-size: 1.4rem !important; }
+    .hero-title { font-size: 1.6rem !important; }
+    
+    .glass-card {
+        padding: 14px !important;
+    }
+}
+
+
+
+/* Final global tweaks */
+@media (max-width: 600px) {
+    body {
+        padding-top: 70px !important; /* Adjust body padding for mobile nav */
+    }
+    .navbar {
+        height: auto !important;
+    }
+    .nav-content {
+        justify-content: center !important; /* Center logo on small screens */
+    }
+    .logo-container {
+        gap: 8px !important;
+    }
+    .logo-img {
+        height: 28px !important;
+    }
+}
+

@@ -339,32 +339,6 @@
             transition: opacity 0.3s;
         }
 
-        /* Responsive */
-        @media (max-width: 640px) {
-            .menu-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .profile-card {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 14px;
-            }
-
-            .profile-stats-row {
-                gap: 14px;
-            }
-
-            .edit-fields {
-                grid-template-columns: 1fr 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 400px) {
-            .edit-fields {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 
@@ -408,6 +382,11 @@
                         <span class="profile-stat-val" id="stat-estatura">--</span>
                         <span class="profile-stat-lbl">Estatura (cm)</span>
                     </div>
+                    <div class="profile-divider"></div>
+                    <div class="profile-stat-item">
+                        <span class="profile-stat-val" id="stat-grasa">--</span>
+                        <span class="profile-stat-lbl">% Grasa</span>
+                    </div>
                 </div>
 
                 <!-- Panel de edición -->
@@ -425,6 +404,19 @@
                             <label>Estatura (cm)</label>
                             <input type="number" id="edit-estatura" placeholder="Ej: 175" min="1">
                         </div>
+                        <div class="edit-field">
+                            <label>% Grasa</label>
+                            <input type="text" id="edit-grasa" placeholder="Ej: 15" step="0.1">
+                        </div>
+                    </div>
+
+                    <!-- Sección de Foto (Privada) -->
+                    <div class="photo-upload-private" style="margin-top: 15px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; text-align: center;">
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 10px;">✨ Estima tu grasa automáticamente con una foto (Solo se usa para el cálculo, no se guarda)</p>
+                        <input type="file" id="photo-input" hidden accept="image/*">
+                        <button id="btn-open-photo" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.8rem; cursor: pointer;">📸 Subir Foto</button>
+                        <img id="preview-img" style="display:none; width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin: 10px auto;">
+                        <button id="btn-estimate-fat" style="display:none; background: var(--primary-600); border: none; color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; margin-top: 10px;">✨ Calcular Grasa</button>
                     </div>
                     <div class="edit-actions">
                         <button class="btn-save-profile" id="btn-save-profile">✓ Guardar</button>
@@ -455,6 +447,12 @@
                 <div class="menu-card-desc">Visualiza gráficas de evolución de repeticiones y cargas.</div>
             </a>
 
+            <a href="nutrition.html" class="menu-card">
+                <div class="menu-card-icon">🥗</div>
+                <div class="menu-card-title">Plan Alimenticio</div>
+                <div class="menu-card-desc">Consulta tu plan alimenticio personalizado generado con IA.</div>
+            </a>
+
             <a href="security.html" class="menu-card">
                 <div class="menu-card-icon">🔒</div>
                 <div class="menu-card-title">Seguridad</div>
@@ -465,12 +463,12 @@
         <button class="logout-link" id="logout-btn">Cerrar Sesión</button>
     </div>
 
-    <script src="script.js?v=06009"></script>
+    <script src="script.js?v=06013"></script>
     <script>
         const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:5000/api' : '/api';
 
         // Auth check
-        const userDataStr = sessionStorage.getItem("strengthos_user");
+        const userDataStr = localStorage.getItem("strengthos_user") || sessionStorage.getItem("strengthos_user");
         if (!userDataStr) {
             window.location.href = "index.html";
         } else {
@@ -483,25 +481,27 @@
             document.getElementById("profile-id").innerText = `#${userData.user_id}`;
 
             // Helper: actualizar valores en pantalla
-            function setStats(edad, peso, estatura) {
+            function setStats(edad, peso, estatura, grasa) {
                 document.getElementById("stat-edad").innerText = (edad && edad !== '--') ? edad : '--';
                 document.getElementById("stat-peso").innerText = (peso && peso !== '--') ? peso : '--';
                 document.getElementById("stat-estatura").innerText = (estatura && estatura !== '--') ? estatura : '--';
+                document.getElementById("stat-grasa").innerText = (grasa && grasa !== '--') ? `${grasa}%` : '--';
             }
 
             // Datos ya en sesión (inmediato)
-            setStats(userData.edad, userData.peso, userData.estatura);
+            setStats(userData.edad, userData.peso, userData.estatura, userData.grasa_corporal);
 
             // Fetch perfil actualizado
             fetch(`${API_URL}/cliente/${userData.user_id}/perfil`)
                 .then(r => r.ok ? r.json() : null)
                 .then(perfil => {
                     if (!perfil) return;
-                    setStats(perfil.edad, perfil.peso, perfil.estatura);
+                    setStats(perfil.edad, perfil.peso, perfil.estatura, perfil.grasa_corporal);
                     // Sincronizar sesión
                     userData.edad = perfil.edad;
                     userData.peso = perfil.peso;
                     userData.estatura = perfil.estatura;
+                    userData.grasa_corporal = perfil.grasa_corporal;
                     sessionStorage.setItem("strengthos_user", JSON.stringify(userData));
                 })
                 .catch(() => { });
@@ -518,9 +518,11 @@
                 const currentEdad = document.getElementById("stat-edad").innerText;
                 const currentPeso = document.getElementById("stat-peso").innerText;
                 const currentEstatura = document.getElementById("stat-estatura").innerText;
+                const currentGrasa = document.getElementById("stat-grasa").innerText.replace('%', '');
                 document.getElementById("edit-edad").value = currentEdad !== '--' ? currentEdad : '';
                 document.getElementById("edit-peso").value = currentPeso !== '--' ? currentPeso : '';
                 document.getElementById("edit-estatura").value = currentEstatura !== '--' ? currentEstatura : '';
+                document.getElementById("edit-grasa").value = currentGrasa !== '--' ? currentGrasa : '';
                 feedback.innerText = '';
                 profileCard.classList.add("editing");
                 document.getElementById("edit-edad").focus();
@@ -545,8 +547,9 @@
                 const edad = document.getElementById("edit-edad").value.trim();
                 const peso = document.getElementById("edit-peso").value.trim();
                 const estatura = document.getElementById("edit-estatura").value.trim();
+                const grasa_corporal = document.getElementById("edit-grasa").value.trim();
 
-                if (!edad && !peso && !estatura) {
+                if (!edad && !peso && !estatura && !grasa_corporal) {
                     feedback.style.color = '#ef4444';
                     feedback.innerText = 'Ingresa al menos un dato.';
                     return;
@@ -559,17 +562,18 @@
                     const res = await fetch(`${API_URL}/cliente/${userData.user_id}/perfil`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ edad, peso, estatura })
+                        body: JSON.stringify({ edad, peso, estatura, grasa_corporal })
                     });
                     const data = await res.json();
 
                     if (res.ok) {
                         // Actualizar pantalla
-                        setStats(edad || '--', peso || '--', estatura || '--');
+                        setStats(edad || '--', peso || '--', estatura || '--', grasa_corporal || '--');
                         // Actualizar sesión
                         userData.edad = edad || '--';
                         userData.peso = peso || '--';
                         userData.estatura = estatura || '--';
+                        userData.grasa_corporal = grasa_corporal || '--';
                         sessionStorage.setItem("strengthos_user", JSON.stringify(userData));
 
                         feedback.style.color = 'var(--primary-200)';
@@ -585,6 +589,55 @@
                 } finally {
                     btnSave.innerText = '✓ Guardar';
                     btnSave.style.opacity = '1';
+                }
+            });
+                // ── Lógica de Foto (Privada) ──
+            const btnOpenPhoto = document.getElementById("btn-open-photo");
+            const photoInput = document.getElementById("photo-input");
+            const previewImg = document.getElementById("preview-img");
+            const btnEstimate = document.getElementById("btn-estimate-fat");
+            const editGrasa = document.getElementById("edit-grasa");
+
+            btnOpenPhoto.addEventListener("click", () => photoInput.click());
+
+            photoInput.addEventListener("change", (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (re) => {
+                        previewImg.src = re.target.result;
+                        previewImg.style.display = "block";
+                        btnEstimate.style.display = "inline-block";
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            btnEstimate.addEventListener("click", async () => {
+                const file = photoInput.files[0];
+                if (!file) return;
+
+                btnEstimate.innerText = "⏳ Analizando...";
+                const formData = new FormData();
+                formData.append("foto", file);
+
+                try {
+                    const res = await fetch(`${API_URL}/nutricion/estimar-grasa`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        editGrasa.value = data.porcentaje.replace('%', '');
+                        feedback.style.color = 'var(--primary-200)';
+                        feedback.innerText = '✨ Grasa estimada con éxito';
+                        btnEstimate.style.display = "none";
+                        previewImg.style.display = "none";
+                    }
+                } catch (e) {
+                    feedback.innerText = 'Error al estimar grasa';
+                } finally {
+                    btnEstimate.innerText = "✨ Calcular Grasa";
                 }
             });
         }

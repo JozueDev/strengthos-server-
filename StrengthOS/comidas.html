@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Seguimiento de Comidas | StrengthOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=06011">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .meals-page {
+            min-height: 100vh;
+            padding: 100px 20px 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tracker-container {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 24px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* ── Checklist ── */
+        .meal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .meal-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .meal-item.completed {
+            opacity: 0.6;
+        }
+
+        .meal-item.completed .meal-name {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid rgba(var(--primary-rgb), 0.5);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .checkbox.checked {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: 800;
+            font-size: 0.8rem;
+        }
+
+        .meal-info {
+            flex: 1;
+        }
+
+        .meal-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .meal-macros {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .btn-delete {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 5px;
+            transition: opacity 0.2s;
+        }
+
+        .meal-item:hover .btn-delete {
+            opacity: 1;
+        }
+
+        /* ── Formulario ── */
+        .add-meal-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .btn-add {
+            grid-column: span 2;
+            padding: 12px;
+            background: rgba(var(--primary-rgb), 0.2);
+            border: 1px solid rgba(var(--primary-rgb), 0.4);
+            color: var(--primary-100);
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-add:hover {
+            background: rgba(var(--primary-rgb), 0.35);
+        }
+
+        /* ── Gráficas ── */
+        .stats-summary {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-100);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+
+        /* ── Modal Edición ── */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: #1a1a1a;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="particles-container" id="particles"></div>
+
+    <div class="modal-overlay" id="modal-edit">
+        <div class="modal-card">
+            <h2 style="margin-bottom: 20px;">Editar Registro</h2>
+            <div class="add-meal-form">
+                <input type="hidden" id="edit-id">
+                <div class="input-group" style="grid-column: span 2;">
+                    <label>Nombre</label>
+                    <input type="text" id="edit-nombre">
+                </div>
+                <div class="input-group">
+                    <label>Calorías</label>
+                    <input type="number" id="edit-calorias">
+                </div>
+                <div class="input-group">
+                    <label>Proteínas (g)</label>
+                    <input type="number" id="edit-proteinas">
+                </div>
+                <div class="input-group">
+                    <label>Carbos (g)</label>
+                    <input type="number" id="edit-carbos">
+                </div>
+                <div class="input-group">
+                    <label>Grasas (g)</label>
+                    <input type="number" id="edit-grasas">
+                </div>
+                <button class="btn-add" id="btn-save-edit" style="background: rgba(var(--primary-rgb), 0.3);">Guardar Cambios</button>
+                <button class="btn-add" id="btn-close-modal" style="background: none; border-color: rgba(255,255,255,0.1); margin-top: 10px;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="navbar scrolled">
+        <div class="container nav-content">
+            <a href="dashboard.html" class="logo-container">
+                <img src="images/logo.png" alt="Logo" class="logo-img">
+                <span class="logo-text">StrengthOS</span>
+            </a>
+            <div class="nav-links">
+                <a href="nutrition.html" class="nav-link">Plan IA</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="meals-page">
+        <div class="section-header" style="text-align: center; margin-bottom: 40px;">
+            <h1 id="page-date">Cargando fecha...</h1>
+            <p style="color: var(--text-tertiary);" id="page-objective">Objetivo: --</p>
+        </div>
+
+        <div class="tracker-container">
+            <!-- Izquierda: Checklist de comidas -->
+            <div class="card">
+                <div class="section-title">
+                    <span>🗓️ Comidas del Día</span>
+                    <input type="date" id="date-picker" style="background:none; border:none; color:inherit; font-family:inherit; cursor:pointer;">
+                </div>
+
+                <div class="meal-list" id="meal-list">
+                    <!-- Comidas aquí -->
+                    <div style="text-align: center; padding: 40px; color: var(--text-tertiary);">
+                        <p>No has registrado comidas para hoy.</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 25px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                        <span>➕ Agregar Comida</span>
+                        <span id="btn-open-scanner" style="font-size: 0.75rem; background: rgba(var(--primary-rgb), 0.2); padding: 4px 10px; border-radius: 6px; cursor: pointer; color: var(--primary-100);">📸 Escanear con IA</span>
+                    </h3>
+                    
+                    <!-- Scanner Panel (Oculto por defecto) -->
+                    <div id="scanner-panel" style="display: none; margin-bottom: 25px; padding: 20px; background: rgba(var(--primary-rgb), 0.05); border: 1px dashed rgba(var(--primary-rgb), 0.3); border-radius: 15px;">
+                        <input type="file" id="scanner-input" accept="image/*" capture="environment" style="display: none;">
+                        <div id="scanner-dropzone" style="text-align: center; cursor: pointer; padding: 20px;">
+                            <div id="scanner-placeholder">
+                                <span style="font-size: 2rem;">📷</span>
+                                <p style="font-size: 0.85rem; margin-top: 10px;">Haz clic para tomar foto o subir imagen</p>
+                            </div>
+                            <img id="scanner-preview" style="display: none; width: 100%; border-radius: 10px; margin-bottom: 15px;">
+                        </div>
+                        <div id="scanner-loading" style="display: none; text-align: center; padding: 10px;">
+                            <div class="loader-dots"><span></span><span></span><span></span></div>
+                            <p style="font-size: 0.8rem; color: var(--primary-100);">Analizando macros del plato...</p>
+                        </div>
+                        <button class="btn-add" id="btn-scan" style="display: none; width: 100%; background: var(--primary-500);">Calcular Macros</button>
+                    </div>
+
+                    <div class="add-meal-form">
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Nombre de la Comida / Alimento</label>
+                            <input type="text" id="add-nombre" placeholder="Ej: Pechuga de pollo con arroz">
+                        </div>
+                        <div class="input-group">
+                            <label>Calorías (kcal)</label>
+                            <input type="number" id="add-calorias" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Proteínas (g)</label>
+                            <input type="number" id="add-proteinas" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Carbos (g)</label>
+                            <input type="number" id="add-carbos" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Grasas (g)</label>
+                            <input type="number" id="add-grasas" placeholder="0">
+                        </div>
+                        <button class="btn-add" id="btn-add-meal">Agregar Registro</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Derecha: Resumen de Macros -->
+            <div class="card" style="height: fit-content;">
+                <h2 class="section-title">📊 Resumen Diario</h2>
+                
+                <div class="stats-summary">
+                    <div class="stat-value" id="total-kcal">0</div>
+                    <div class="stat-label">Calorías Totales</div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="macros-chart"></canvas>
+                </div>
+
+                <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #ff6384;" id="total-p">0g</div>
+                        <div style="font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Proteína</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #36a2eb;" id="total-c">0g</div>
+                        <div style="font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Carbos</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; text-align: center; grid-column: span 2;">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #ffcd56;" id="total-g">0g</div>
+                        <div style="font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase;">Grasas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=06011"></script>
+    <script src="comidas.js?v=06011"></script>
+</body>
+
+</html>
