@@ -148,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:5000/api' : '/api';
             try {
-                // Hacemos una petición al servidor Flask
                 const response = await fetch(`${API_URL}/login`, {
                     method: "POST",
                     headers: {
@@ -163,7 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Guardar sesión para ambos (Admin y Cliente)
                     localStorage.setItem("strengthos_user", JSON.stringify(data.cliente));
                     sessionStorage.setItem("strengthos_user", JSON.stringify(data.cliente));
 
@@ -197,16 +195,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const unit = document.getElementById("calc-unit").value;
 
             if (weight > 0 && reps > 0) {
-                // Fórmula de Epley: 1RM = Peso * (1 + 0.0333 * Repeticiones)
                 const rm = weight * (1 + 0.0333 * reps);
 
-                // Mostrar resultado animado
                 const resultDiv = document.getElementById("calc-result");
                 const rmValue = document.getElementById("rm-value");
 
                 resultDiv.style.display = "block";
 
-                // Pequeña animación para mostrar el número
                 rmValue.innerText = "--";
                 setTimeout(() => {
                     rmValue.innerText = rm.toFixed(1) + " " + unit;

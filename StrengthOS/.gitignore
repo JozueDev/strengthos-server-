@@ -1,39 +1,27 @@
-# ── Archivos de configuración sensibles ─────────────────────
+# Archivos de configuración sensibles
 .env
 .env.local
 .env.production
 *.env
 
-# ── Base de datos local ──────────────────────────────────────
+# Base de datos local
 *.db
 *.sqlite
 *.sqlite3
 
-# ── Caché de Python ──────────────────────────────────────────
+# Caché de Python
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
-.Python
 
-# ── Entornos virtuales ───────────────────────────────────────
+# Entornos virtuales
 venv/
 env/
 .venv/
-.env/
-ENV/
 
-# ── Archivos del sistema ─────────────────────────────────────
+# Archivos del sistema
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# ── Logs ─────────────────────────────────────────────────────
+# Logs
 *.log
-logs/
-
-# ── Archivos de IDE ──────────────────────────────────────────
-.vscode/
-.idea/
-*.suo
-*.user
