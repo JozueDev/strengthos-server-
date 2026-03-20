@@ -46,9 +46,10 @@ CORS(app)
 
 # ── Lista de modelos Gemini por prioridad (fallback automático) ───────────────
 GEMINI_MODELS = [
-    'gemini-2.5-flash',          # Primero: el que tiene cuota disponible
-    'gemini-2.0-flash',          # Segundo: fallback estable
-    'gemini-1.5-flash',          # Tercero: último recurso
+    'gemini-3-flash-preview',     # El modelo más avanzado (Tier superior)
+    'gemini-2.5-flash',          # Modelo balanceado excelente (Tier superior)
+    'gemini-2.0-flash',          # Modelo estable de rendimiento
+    'gemini-flash-latest',       # Último recurso (Tier anterior, verificado OK)
 ]
 
 # ── Helper: llamada a Gemini con fallback de modelos y reintentos ──────────────
@@ -92,10 +93,10 @@ def _gemini_generate(contents, max_retries=2, config=None):
 
                 print(f"[Gemini] Error en {model_name}: HTTP {status_code} — {error_str[:200]}")
 
-                # ── 503 / 502 Alta demanda o error temporal del servidor ────
-                if status_code in (502, 503):
-                    print(f"[Gemini] {model_name} no disponible ({status_code}). Probando siguiente modelo...")
-                    time.sleep(2)
+                # ── 503 / 502 / 404 Errores temporales o de configuración ────
+                if status_code in (502, 503, 404):
+                    print(f"[Gemini] {model_name} no disponible/no encontrado ({status_code}). Probando siguiente modelo...")
+                    time.sleep(1)
                     break  # Siguiente modelo
 
                 # ── 429 Cuota / Rate limit ─────────────────────────────────
@@ -126,11 +127,11 @@ def _gemini_generate(contents, max_retries=2, config=None):
                         "El administrador debe generar una nueva key en aistudio.google.com y actualizar el .env."
                     )
 
-                # ── 401 No autenticado ─────────────────────────────────────
-                elif status_code == 401 or 'UNAUTHENTICATED' in error_str:
+                # ── 401 No autenticado o Expirado ──────────────────────────
+                elif status_code == 401 or 'UNAUTHENTICATED' in error_str or 'expired' in error_str.lower():
                     raise RuntimeError(
-                        "API_KEY_INVALID: La API key de Gemini no es válida o expiró. "
-                        "Verifica el archivo .env y asegúrate de que GEMINI_API_KEY sea correcta."
+                        "API_KEY_INVALID: La API key de Gemini ha expirado o es invalida. "
+                        "Renueva tu key en aistudio.google.com y subela al .env."
                     )
 
                 # ── 400 ClientError: solicitud inválida (imagen rechazada, safety filter, etc.) ──
@@ -830,7 +831,7 @@ def estimar_grasa():
         if datos_usuario["sexo"]: txt_contexto += f"- Sexo: {datos_usuario['sexo']}\n"
         if datos_usuario["peso"]: txt_contexto += f"- Peso: {datos_usuario['peso']} kg\n"
         if datos_usuario["estatura"]: txt_contexto += f"- Estatura: {datos_usuario['estatura']} cm\n"
-        if datos_usuario["edad"]: txt_contexto += f"- Edad: {datos_usuario['edad']} anos\n"
+        if datos_usuario["edad"]: txt_contexto += f"- Edad: {datos_usuario['edad']} años\n"
         imc = ""
         try:
             p = float(datos_usuario["peso"])
@@ -1123,7 +1124,7 @@ def chat_nutricion():
     == PERFIL COMPLETO DEL ATLETA ==
     - Peso actual: {user_context[0]} kg
     - Estatura: {user_context[1]} cm
-    - Edad: {user_context[2]} anos
+    - Edad: {user_context[2]} años
     - % Grasa corporal estimado: {user_context[3]}
     - IMC calculado: {imc_str}
     - Objetivo principal: {user_context[4]}
@@ -1228,7 +1229,7 @@ def generar_plan_nutricion():
     - Fisiologo del ejercicio
 
     == DATOS DEL ATLETA ==
-    - Peso: {peso} kg | Estatura: {estatura} cm | Edad: {edad} anos | % Grasa: {grasa}
+    - Peso: {peso} kg | Estatura: {estatura} cm | Edad: {edad} años | % Grasa: {grasa}
     - Objetivo: {objetivo}
     - ALERGIAS (EXCLUIR ABSOLUTAMENTE): {alergias}
     - Alimentos preferidos / disponibles: {alimentos}

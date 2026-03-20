@@ -747,7 +747,7 @@
                         const pct = data.porcentaje.replace(/%/g, '').trim();
                         editGrasa.value = pct;
                         feedback.style.color = 'var(--primary-200)';
-                        feedback.innerText = `✨ IA (${data.porcentaje}): ${data.explicacion.slice(0, 100)}...`;
+                        feedback.innerText = `✨ IA (${data.porcentaje}): ${data.explicacion}`;
                         btnEstimate.style.display = 'none';
                     } else {
                         feedback.style.color = '#ef4444';
