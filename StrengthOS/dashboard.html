@@ -721,6 +721,12 @@
 
                 if (!hasFiles) return;
 
+                // Agregar contexto para mayor precisión
+                formData.append("peso", document.getElementById("edit-peso").value || (userData ? userData.peso : ''));
+                formData.append("estatura", document.getElementById("edit-estatura").value || (userData ? userData.estatura : ''));
+                formData.append("edad", document.getElementById("edit-edad").value || (userData ? userData.edad : ''));
+                formData.append("sexo", document.getElementById("medida-sexo").value || (userData ? userData.sexo : ''));
+
                 btnEstimate.innerText = "⏳ Analizando...";
                 btnEstimate.disabled = true;
                 feedback.innerText = '';

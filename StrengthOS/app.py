@@ -782,6 +782,14 @@ def estimar_grasa():
     if not client:
         return jsonify({"error": "Configuración de IA no disponible (falta GEMINI_API_KEY)"}), 503
     
+    # ── Datos de contexto para mayor precisión ──────────────────────────────
+    datos_usuario = {
+        "peso": request.form.get("peso"),
+        "estatura": request.form.get("estatura"),
+        "edad": request.form.get("edad"),
+        "sexo": request.form.get("sexo")
+    }
+    
     # ── Soporte para múltiples vistas (Frente, Lado, Espalda) ──────────────────
     vistas = {
         "frente": request.files.get('foto_frente'),
@@ -809,48 +817,56 @@ def estimar_grasa():
                 vistas_validas.append(nombre_vista)
             except Exception as e:
                 print(f"[estimar_grasa] Error al procesar vista {nombre_vista}: {e}")
-                # Si es una sola imagen y falla, error. Si son varias, intentamos seguir con las que sirvan.
                 if len(vistas) == 1:
                     return jsonify({"error": "La imagen enviada no es válida o está corrupta."}), 400
 
     if not gemini_payload:
         return jsonify({"error": "No se pudo procesar ninguna de las imágenes enviadas."}), 400
 
-    # ── Prompt clínico actualizado para múltiples vistas ─────────────────────
-    prompt = f"""CONTEXTO CLINICO: Eres un sistema de inteligencia artificial especializado en
-    evaluacion de composicion corporal para uso en centros de entrenamiento deportivo y clinicas
-    de nutricion. Esta solicitud proviene de un profesional certificado en fitness.
+    # Construir bloque de contexto (si hay datos disponibles)
+    txt_contexto = ""
+    if any(datos_usuario.values()):
+        txt_contexto = "PERFIL ANTROPOMETRICO DEL SUJETO:\n"
+        if datos_usuario["sexo"]: txt_contexto += f"- Sexo: {datos_usuario['sexo']}\n"
+        if datos_usuario["peso"]: txt_contexto += f"- Peso: {datos_usuario['peso']} kg\n"
+        if datos_usuario["estatura"]: txt_contexto += f"- Estatura: {datos_usuario['estatura']} cm\n"
+        if datos_usuario["edad"]: txt_contexto += f"- Edad: {datos_usuario['edad']} anos\n"
+        imc = ""
+        try:
+            p = float(datos_usuario["peso"])
+            e = float(datos_usuario["estatura"]) / 100
+            imc = f"- IMC calculado: {round(p / (e*e), 1)}"
+            txt_contexto += f"{imc}\n"
+        except: pass
 
-    TAREA: Realizar una evaluacion visual de composicion corporal (porcentaje de grasa)
-    basada en indicadores morfologicos externos. 
+    # ── Prompt clínico actualizado para mayor precisión ───────────────────────
+    prompt = f"""CONTEXTO CLINICO PROFESIONAL: Actua como un antropometrista deportivo certificado ISAK Nivel 3.
+    Realiza una evaluacion de composicion corporal (porcentaje de grasa) integrando los datos visuales
+    con el perfil antropometrico proporcionado.
+
+    {txt_contexto}
     
-    ESTADO ACTUAL: Se proporcionan {len(gemini_payload)} imagenes correspondientes a las vistas: {', '.join(vistas_validas)}.
-    Utiliza todas las perspectivas disponibles para triangular una estimacion mas precisa.
+    ESTADO DE IMAGENES: Se proporcionan {len(gemini_payload)} vistas: {', '.join(vistas_validas)}.
+    Cruza la informacion visual con el IMC y el sexo del usuario para evitar errores de interpretacion.
 
-    METODOLOGIA DE EVALUACION CLINICA:
-    1. Distribucion de tejido adiposo subcutaneo (region abdominal, lumbar, escapular, tricipital, suprailiaca).
-    2. Grado de definicion del tejido muscular esqueletico visible en diferentes planos.
-    3. Patron de distribucion de grasa corporal: androide vs ginecoide.
-    4. Clasificacion somatotipica aparente (ectomorfo, mesomorfo, endomorfo).
-    5. Proporcion de masa magra estimada vs tejido adiposo total.
+    METODOLOGIA DE EVALUACION (SINTESIS CLINICA):
+    1. Densidad adiposa visual: Observa pliegues criticos (abdominal, cresta iliaca, escapular).
+    2. Desarrollo musculoesqueletico: Evalua densidad y separacion muscular segun sexo y peso.
+    3. Distribucion visceral vs subcutanea: Identifica patrones de riesgo (grasa androide/ginecoide).
+    4. Correlacion Antropometrica: ¿Es coherente la imagen con el peso/estatura declarado? Ajusta con rigor.
 
-    ESCALA DE REFERENCIA (ACSM/NSCA):
-    - 5-9%: Competicion (hipertrofia extrema, vascularizacion abdominal visible).
-    - 10-14%: Atletico (definicion abdominal clara, separacion muscular evidente).
-    - 15-19%: Fitness (leve relieve abdominal, buena tonicidad general).
-    - 20-24%: Promedio (adiposidad abdominal moderada, sin definicion visible).
-    - 25-29%: Por encima del promedio (adiposidad visible en tronco y extremidades).
-    - 30%+: Sobrepeso/obesidad leve (adiposidad generalizada).
+    ESCALA DE REFERENCIA (ACSM):
+    - Hombres: Atletico (10-14%), Fitness (15-19%), Promedio (20-25%).
+    - Mujeres: Atletica (16-20%), Fitness (21-25%), Promedio (26-30%).
 
     INSTRUCCIONES:
-    - Cruza los datos de todas las fotos (ej: pliegue lumbar en foto de espalda + abdomen en frente).
-    - Proporciona un rango realista basado en indicadores visuales objetivos.
-    - Menciona los marcadores anatomicos especificos observados en las distintas vistas.
-    - Tono profesional, objetivo e instructivo.
-    - Responde en espanol.
+    - Analiza con rigor cada plano visual.
+    - Proporciona un rango especifico (ej: 14.5% - 16%).
+    - Explica brevemente por que llegas a ese numero basandote en la morfologia observada.
+    - Responde en espanol con tono cientifico pero motivador.
 
-    Responde UNICAMENTE en formato JSON valido (sin bloques de codigo markdown, sin texto adicional):
-    {{"porcentaje": "XX-XX%", "explicacion": "Analisis morfologico cruzado basado en las vistas proporcionadas y recomendacion profesional"}}
+    Responde UNICAMENTE en JSON:
+    {{"porcentaje": "XX.X%", "explicacion": "Sintesis de evaluacion morfologica cruzada e indicaciones"}}
     """
 
     # ── Config con safety_settings permisivos para uso clínico ───────────────
