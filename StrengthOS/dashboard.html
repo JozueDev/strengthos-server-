@@ -338,7 +338,6 @@
             min-height: 18px;
             transition: opacity 0.3s;
         }
-
     </style>
 </head>
 
@@ -410,13 +409,74 @@
                         </div>
                     </div>
 
-                    <!-- Sección de Foto (Privada) -->
-                    <div class="photo-upload-private" style="margin-top: 15px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; text-align: center;">
-                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 10px;">✨ Estima tu grasa automáticamente con una foto (Solo se usa para el cálculo, no se guarda)</p>
-                        <input type="file" id="photo-input" hidden accept="image/*">
-                        <button id="btn-open-photo" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.8rem; cursor: pointer;">📸 Subir Foto</button>
-                        <img id="preview-img" style="display:none; width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin: 10px auto;">
-                        <button id="btn-estimate-fat" style="display:none; background: var(--primary-600); border: none; color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; margin-top: 10px;">✨ Calcular Grasa</button>
+                    <!-- Sección de Foto para estimar grasa corporal (Triple Vista) -->
+                    <div id="section-foto"
+                        style="margin-top: 15px; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 15px; text-align: center;">
+                        <p style="font-size: 0.73rem; color: var(--text-tertiary); margin-bottom: 12px;">
+                            📸 Sube 3 ángulos para una precisión profesional.<br>
+                            <span style="font-size:0.68rem;opacity:0.6;">(Frente, Lado, Espalda - Ropa deportiva/interior)</span>
+                        </p>
+                        
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:12px;">
+                            <div class="photo-slot" onclick="document.getElementById('photo-frente').click()" style="cursor:pointer;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px;transition:0.2s;">
+                                <div style="font-size:0.65rem;color:var(--text-tertiary);margin-bottom:5px;text-transform:uppercase;">Frente</div>
+                                <div id="preview-frente-placeholder" style="font-size:1.2rem;height:50px;display:flex;align-items:center;justify-content:center;opacity:0.5;">➕</div>
+                                <img id="preview-frente" style="display:none;width:100%;height:50px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">
+                                <input type="file" id="photo-frente" hidden accept="image/*" capture="environment">
+                            </div>
+                            
+                            <div class="photo-slot" onclick="document.getElementById('photo-lado').click()" style="cursor:pointer;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px;transition:0.2s;">
+                                <div style="font-size:0.65rem;color:var(--text-tertiary);margin-bottom:5px;text-transform:uppercase;">Lado</div>
+                                <div id="preview-lado-placeholder" style="font-size:1.2rem;height:50px;display:flex;align-items:center;justify-content:center;opacity:0.5;">➕</div>
+                                <img id="preview-lado" style="display:none;width:100%;height:50px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">
+                                <input type="file" id="photo-lado" hidden accept="image/*" capture="environment">
+                            </div>
+                            
+                            <div class="photo-slot" onclick="document.getElementById('photo-espalda').click()" style="cursor:pointer;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px;transition:0.2s;">
+                                <div style="font-size:0.65rem;color:var(--text-tertiary);margin-bottom:5px;text-transform:uppercase;">Espalda</div>
+                                <div id="preview-espalda-placeholder" style="font-size:1.2rem;height:50px;display:flex;align-items:center;justify-content:center;opacity:0.5;">➕</div>
+                                <img id="preview-espalda" style="display:none;width:100%;height:50px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">
+                                <input type="file" id="photo-espalda" hidden accept="image/*" capture="environment">
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                            <button id="btn-estimate-fat"
+                                style="display:none;background:linear-gradient(135deg,rgba(var(--primary-rgb),0.3),rgba(var(--primary-rgb),0.15));border:1px solid rgba(var(--primary-rgb),0.4);color:var(--primary-100);padding:10px 18px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">✨ Calcular con IA</button>
+                            <button id="btn-formula-toggle"
+                                style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:var(--text-tertiary);padding:9px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;">📐 Usar Medidas</button>
+                        </div>
+                    </div>
+
+                    <!-- Fallback: Formulario por medidas (Navy Method) -->
+                    <div id="section-medidas" style="display:none;margin-top:12px;border:1px solid rgba(var(--primary-rgb),0.2);border-radius:12px;padding:15px;background:rgba(var(--primary-rgb),0.05);">
+                        <p style="font-size:0.73rem;color:var(--primary-200);margin-bottom:12px;font-weight:600;">📐 Estimación por Medidas Corporales</p>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                            <div>
+                                <label style="font-size:0.67rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Sexo</label>
+                                <select id="medida-sexo" style="width:100%;padding:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.82rem;">
+                                    <option value="masculino">Masculino</option>
+                                    <option value="femenino">Femenino</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.67rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Cintura (cm)</label>
+                                <input type="number" id="medida-cintura" placeholder="82" min="40" max="200" style="width:100%;padding:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.82rem;box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.67rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Cuello (cm)</label>
+                                <input type="number" id="medida-cuello" placeholder="38" min="20" max="80" style="width:100%;padding:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.82rem;box-sizing:border-box;">
+                            </div>
+                            <div id="campo-cadera" style="display:none;">
+                                <label style="font-size:0.67rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Cadera (cm) <span style="opacity:0.5;">(mujeres)</span></label>
+                                <input type="number" id="medida-cadera" placeholder="95" min="40" max="200" style="width:100%;padding:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.82rem;box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <p style="font-size:0.67rem;color:var(--text-tertiary);margin-bottom:10px;">
+                            Estatura y Peso se toman de tu perfil. Puedes llenarlos arriba si están vacíos.
+                        </p>
+                        <button id="btn-calc-formula"
+                            style="width:100%;padding:10px;background:rgba(var(--primary-rgb),0.2);border:1px solid rgba(var(--primary-rgb),0.4);border-radius:8px;color:var(--primary-100);font-size:0.82rem;cursor:pointer;font-weight:600;">📊 Calcular % Grasa</button>
                     </div>
                     <div class="edit-actions">
                         <button class="btn-save-profile" id="btn-save-profile">✓ Guardar</button>
@@ -591,35 +651,79 @@
                     btnSave.style.opacity = '1';
                 }
             });
-                // ── Lógica de Foto (Privada) ──
-            const btnOpenPhoto = document.getElementById("btn-open-photo");
-            const photoInput = document.getElementById("photo-input");
-            const previewImg = document.getElementById("preview-img");
-            const btnEstimate = document.getElementById("btn-estimate-fat");
-            const editGrasa = document.getElementById("edit-grasa");
+            // ── Lógica de Estimación de Grasa Corporal (Triple Vista) ────────
+            const editGrasa        = document.getElementById("edit-grasa");
+            const sectionMedidas   = document.getElementById("section-medidas");
+            const btnFormulaToggle = document.getElementById("btn-formula-toggle");
+            const btnCalcFormula   = document.getElementById("btn-calc-formula");
+            const selectSexo       = document.getElementById("medida-sexo");
+            const campoCadera      = document.getElementById("campo-cadera");
+            const btnEstimate      = document.getElementById("btn-estimate-fat");
 
-            btnOpenPhoto.addEventListener("click", () => photoInput.click());
+            const vistas = ["frente", "lado", "espalda"];
+            const inputs = {};
+            const previews = {};
+            const placeholders = {};
 
-            photoInput.addEventListener("change", (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (re) => {
-                        previewImg.src = re.target.result;
-                        previewImg.style.display = "block";
-                        btnEstimate.style.display = "inline-block";
-                    };
-                    reader.readAsDataURL(file);
-                }
+            vistas.forEach(v => {
+                inputs[v]       = document.getElementById(`photo-${v}`);
+                previews[v]     = document.getElementById(`preview-${v}`);
+                placeholders[v] = document.getElementById(`preview-${v}-placeholder`);
+
+                inputs[v].addEventListener("change", (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (re) => {
+                            previews[v].src = re.target.result;
+                            previews[v].style.display = "block";
+                            placeholders[v].style.display = "none";
+                            btnEstimate.style.display = "inline-block";
+                            sectionMedidas.style.display = 'none';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
             });
 
+            // Mostrar/ocultar campo cadera según sexo
+            selectSexo.addEventListener('change', () => {
+                campoCadera.style.display = selectSexo.value === 'femenino' ? '' : 'none';
+            });
+
+            // Toggle manual del panel de medidas
+            btnFormulaToggle.addEventListener("click", () => {
+                const visible = sectionMedidas.style.display !== 'none';
+                sectionMedidas.style.display = visible ? 'none' : 'block';
+                btnFormulaToggle.style.color = visible ? 'var(--text-tertiary)' : 'var(--primary-200)';
+            });
+
+            // Activar fallback de medidas cuando la foto es bloqueada
+            function activarFallbackMedidas(errorText) {
+                sectionMedidas.style.display = 'block';
+                btnFormulaToggle.style.color = 'var(--primary-200)';
+                btnEstimate.style.display = 'none';
+                feedback.style.color = '#facc15';
+                feedback.innerText = errorText || '⚠️ La IA no pudo analizar las fotos. Usa Medidas.';
+            }
+
+            // Calcular con IA (análisis de fotos múltiple)
             btnEstimate.addEventListener("click", async () => {
-                const file = photoInput.files[0];
-                if (!file) return;
+                const formData = new FormData();
+                let hasFiles = false;
+
+                vistas.forEach(v => {
+                    if (inputs[v].files[0]) {
+                        formData.append(`foto_${v}`, inputs[v].files[0]);
+                        hasFiles = true;
+                    }
+                });
+
+                if (!hasFiles) return;
 
                 btnEstimate.innerText = "⏳ Analizando...";
-                const formData = new FormData();
-                formData.append("foto", file);
+                btnEstimate.disabled = true;
+                feedback.innerText = '';
 
                 try {
                     const res = await fetch(`${API_URL}/nutricion/estimar-grasa`, {
@@ -627,17 +731,73 @@
                         body: formData
                     });
                     const data = await res.json();
-                    if (res.ok) {
-                        editGrasa.value = data.porcentaje.replace('%', '');
+
+                    if (res.ok && data.bloqueada) {
+                        activarFallbackMedidas('⚠️ Fotos interceptadas por filtros de seguridad. Prueba con ropa deportiva o usa Medidas.');
+                        return;
+                    }
+
+                    if (res.ok && data.porcentaje) {
+                        const pct = data.porcentaje.replace(/%/g, '').trim();
+                        editGrasa.value = pct;
                         feedback.style.color = 'var(--primary-200)';
-                        feedback.innerText = '✨ Grasa estimada con éxito';
-                        btnEstimate.style.display = "none";
-                        previewImg.style.display = "none";
+                        feedback.innerText = `✨ IA (${data.porcentaje}): ${data.explicacion.slice(0, 100)}...`;
+                        btnEstimate.style.display = 'none';
+                    } else {
+                        feedback.style.color = '#ef4444';
+                        feedback.innerText = data.error || 'No se pudo analizar. Intenta con otras fotos.';
                     }
                 } catch (e) {
-                    feedback.innerText = 'Error al estimar grasa';
+                    feedback.style.color = '#ef4444';
+                    feedback.innerText = 'Error de conexión.';
                 } finally {
-                    btnEstimate.innerText = "✨ Calcular Grasa";
+                    btnEstimate.innerText = "✨ Calcular con IA";
+                    btnEstimate.disabled = false;
+                }
+            });
+
+            // Calcular con Fórmula (Navy Method / BMI)
+            btnCalcFormula.addEventListener("click", async () => {
+                const peso     = parseFloat(document.getElementById("edit-peso").value)     || 0;
+                const estatura = parseFloat(document.getElementById("edit-estatura").value) || 0;
+                const sexo     = selectSexo.value;
+                const cintura  = parseFloat(document.getElementById("medida-cintura").value) || 0;
+                const cuello   = parseFloat(document.getElementById("medida-cuello").value)  || 0;
+                const cadera   = parseFloat(document.getElementById("medida-cadera").value)  || 0;
+
+                if (!estatura && !peso) {
+                    feedback.style.color = '#ef4444';
+                    feedback.innerText = 'Ingresa al menos tu estatura y peso en los campos de perfil.';
+                    return;
+                }
+
+                btnCalcFormula.innerText = '⏳ Calculando...';
+                btnCalcFormula.disabled = true;
+
+                try {
+                    const res = await fetch(`${API_URL}/nutricion/estimar-grasa-formula`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sexo, peso, estatura, cintura, cuello, cadera })
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.porcentaje) {
+                        const pct = data.porcentaje.replace(/%/g, '').trim();
+                        editGrasa.value = pct;
+                        feedback.style.color = 'var(--primary-200)';
+                        feedback.innerText = `📐 ${data.metodo}: ${data.porcentaje} (${data.clasificacion})`;
+                        sectionMedidas.style.display = 'none';
+                    } else {
+                        feedback.style.color = '#ef4444';
+                        feedback.innerText = data.error || 'Error al calcular. Verifica los datos.';
+                    }
+                } catch (e) {
+                    feedback.style.color = '#ef4444';
+                    feedback.innerText = 'Error de conexión.';
+                } finally {
+                    btnCalcFormula.innerText = '📊 Calcular % Grasa';
+                    btnCalcFormula.disabled = false;
                 }
             });
         }

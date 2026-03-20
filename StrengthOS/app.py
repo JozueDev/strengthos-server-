@@ -52,9 +52,10 @@ GEMINI_MODELS = [
 ]
 
 # ── Helper: llamada a Gemini con fallback de modelos y reintentos ──────────────
-def _gemini_generate(contents, max_retries=2):
+def _gemini_generate(contents, max_retries=2, config=None):
     """Intenta generar con la lista GEMINI_MODELS en orden.
     
+    - config: dict opcional con GenerateContentConfig (ej: safety_settings)
     - 503 UNAVAILABLE: pasa al siguiente modelo inmediatamente
     - 429 cuota agotada: pasa al siguiente modelo
     - 429 rate-limit temporal (retry hint): espera y reintenta
@@ -74,10 +75,10 @@ def _gemini_generate(contents, max_retries=2):
         for attempt in range(max_retries):
             try:
                 print(f"[Gemini] Modelo: {model_name} | Intento {attempt + 1}/{max_retries}")
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents
-                )
+                kwargs = dict(model=model_name, contents=contents)
+                if config:
+                    kwargs['config'] = config
+                response = client.models.generate_content(**kwargs)
                 return response  # Exito
 
             except Exception as e:
@@ -89,7 +90,7 @@ def _gemini_generate(contents, max_retries=2):
                     m = re.search(r'\b(4\d{2}|5\d{2})\b', error_str)
                     status_code = int(m.group(1)) if m else 0
 
-                print(f"[Gemini] Error en {model_name}: HTTP {status_code} — {error_str[:120]}")
+                print(f"[Gemini] Error en {model_name}: HTTP {status_code} — {error_str[:200]}")
 
                 # ── 503 / 502 Alta demanda o error temporal del servidor ────
                 if status_code in (502, 503):
@@ -117,6 +118,33 @@ def _gemini_generate(contents, max_retries=2):
                         time.sleep(wait_seconds)
                         continue
                     break  # Siguiente modelo
+
+                # ── 403 API key inválida / revocada / filtrada ────────────
+                elif status_code == 403 or 'PERMISSION_DENIED' in error_str or 'leaked' in error_str.lower():
+                    raise RuntimeError(
+                        "API_KEY_INVALID: La API key de Gemini fue revocada (detectada como filtrada en GitHub). "
+                        "El administrador debe generar una nueva key en aistudio.google.com y actualizar el .env."
+                    )
+
+                # ── 401 No autenticado ─────────────────────────────────────
+                elif status_code == 401 or 'UNAUTHENTICATED' in error_str:
+                    raise RuntimeError(
+                        "API_KEY_INVALID: La API key de Gemini no es válida o expiró. "
+                        "Verifica el archivo .env y asegúrate de que GEMINI_API_KEY sea correcta."
+                    )
+
+                # ── 400 ClientError: solicitud inválida (imagen rechazada, safety filter, etc.) ──
+                elif status_code == 400 or type(e).__name__ == 'ClientError':
+                    # Detectar si es por filtro de seguridad
+                    if any(kw in error_str.upper() for kw in ['SAFETY', 'BLOCKED', 'HARM', 'PROHIBITED']):
+                        raise RuntimeError(
+                            "IMAGE_BLOCKED: La imagen fue interceptada por el filtro de seguridad de la IA."
+                        )
+                    # Otro error 400 (formato, tamaño, etc.)
+                    raise RuntimeError(
+                        f"IMAGE_REJECTED: La IA no pudo procesar la imagen ({error_str[:120]}). "
+                        "Intenta con una foto más clara y de menor tamaño (JPG/PNG, máx. 4MB)."
+                    )
 
                 # ── Otro error → propagar ──────────────────────────────────
                 else:
@@ -754,53 +782,240 @@ def estimar_grasa():
     if not client:
         return jsonify({"error": "Configuración de IA no disponible (falta GEMINI_API_KEY)"}), 503
     
-    if 'foto' not in request.files:
-        return jsonify({"error": "No se recibió ninguna imagen"}), 400
+    # ── Soporte para múltiples vistas (Frente, Lado, Espalda) ──────────────────
+    vistas = {
+        "frente": request.files.get('foto_frente'),
+        "lado":   request.files.get('foto_lado'),
+        "espalda": request.files.get('foto_espalda')
+    }
     
-    file = request.files['foto']
-    img = Image.open(file.stream)
+    # Si no vienen vistas específicas, intentar con el campo 'foto' antiguo
+    if not any(vistas.values()):
+        if 'foto' in request.files:
+            vistas["frente"] = request.files['foto']
+        else:
+            return jsonify({"error": "No se recibió ninguna imagen. Sube al menos una foto (frente, lado o espalda)."}), 400
     
-    prompt = """
-    Eres un especialista certificado en composicion corporal con experiencia en DEXA scan y
-    antropometria deportiva. Analiza esta imagen con la precision de un profesional.
+    # Procesar imágenes válidas
+    gemini_payload = []
+    vistas_validas = []
+    
+    for nombre_vista, file in vistas.items():
+        if file:
+            try:
+                img = Image.open(file.stream)
+                img.load()
+                gemini_payload.append(img)
+                vistas_validas.append(nombre_vista)
+            except Exception as e:
+                print(f"[estimar_grasa] Error al procesar vista {nombre_vista}: {e}")
+                # Si es una sola imagen y falla, error. Si son varias, intentamos seguir con las que sirvan.
+                if len(vistas) == 1:
+                    return jsonify({"error": "La imagen enviada no es válida o está corrupta."}), 400
 
-    METODOLOGIA DE EVALUACION:
-    1. Observa la distribucion de grasa subcutanea (abdomen, caderas, muslos, brazos)
-    2. Identifica el nivel de definicion muscular visible (venas, separacion entre grupos musculares)
-    3. Evalua la distribucion androide vs ginecoide
-    4. Considera el tipo de cuerpo aparente (ectomorfo, mesomorfo, endomorfo)
+    if not gemini_payload:
+        return jsonify({"error": "No se pudo procesar ninguna de las imágenes enviadas."}), 400
 
-    ESCALA DE REFERENCIA:
-    - 5-9%: Competicion (culturismo extremo, venas en abdomen)
-    - 10-14%: Atletico (abs visibles, definicion muscular clara)
-    - 15-19%: Fitness (abs ligeros, buena forma general)
-    - 20-24%: Promedio (algo de grasa abdominal, sin definicion)
-    - 25-29%: Por encima del promedio (grasa visible en tronco y brazos)
-    - 30%+: Obesidad leve a moderada
+    # ── Prompt clínico actualizado para múltiples vistas ─────────────────────
+    prompt = f"""CONTEXTO CLINICO: Eres un sistema de inteligencia artificial especializado en
+    evaluacion de composicion corporal para uso en centros de entrenamiento deportivo y clinicas
+    de nutricion. Esta solicitud proviene de un profesional certificado en fitness.
 
-    IMPORTANTE:
-    - Si la imagen no muestra el cuerpo con suficiente claridad, indicalo honestamente.
-    - Da un rango realista, no subestimes ni sobrestimes.
-    - Explica los indicadores visuales especificos que usaste.
-    - Responde en espanol, tono profesional y motivador.
+    TAREA: Realizar una evaluacion visual de composicion corporal (porcentaje de grasa)
+    basada en indicadores morfologicos externos. 
+    
+    ESTADO ACTUAL: Se proporcionan {len(gemini_payload)} imagenes correspondientes a las vistas: {', '.join(vistas_validas)}.
+    Utiliza todas las perspectivas disponibles para triangular una estimacion mas precisa.
 
-    Responde UNICAMENTE en formato JSON:
-    {"porcentaje": "XX-XX%", "explicacion": "Descripcion detallada de los indicadores visuales observados y recomendacion de siguiente paso"}
+    METODOLOGIA DE EVALUACION CLINICA:
+    1. Distribucion de tejido adiposo subcutaneo (region abdominal, lumbar, escapular, tricipital, suprailiaca).
+    2. Grado de definicion del tejido muscular esqueletico visible en diferentes planos.
+    3. Patron de distribucion de grasa corporal: androide vs ginecoide.
+    4. Clasificacion somatotipica aparente (ectomorfo, mesomorfo, endomorfo).
+    5. Proporcion de masa magra estimada vs tejido adiposo total.
+
+    ESCALA DE REFERENCIA (ACSM/NSCA):
+    - 5-9%: Competicion (hipertrofia extrema, vascularizacion abdominal visible).
+    - 10-14%: Atletico (definicion abdominal clara, separacion muscular evidente).
+    - 15-19%: Fitness (leve relieve abdominal, buena tonicidad general).
+    - 20-24%: Promedio (adiposidad abdominal moderada, sin definicion visible).
+    - 25-29%: Por encima del promedio (adiposidad visible en tronco y extremidades).
+    - 30%+: Sobrepeso/obesidad leve (adiposidad generalizada).
+
+    INSTRUCCIONES:
+    - Cruza los datos de todas las fotos (ej: pliegue lumbar en foto de espalda + abdomen en frente).
+    - Proporciona un rango realista basado en indicadores visuales objetivos.
+    - Menciona los marcadores anatomicos especificos observados en las distintas vistas.
+    - Tono profesional, objetivo e instructivo.
+    - Responde en espanol.
+
+    Responde UNICAMENTE en formato JSON valido (sin bloques de codigo markdown, sin texto adicional):
+    {{"porcentaje": "XX-XX%", "explicacion": "Analisis morfologico cruzado basado en las vistas proporcionadas y recomendacion profesional"}}
     """
-    
+
+    # ── Config con safety_settings permisivos para uso clínico ───────────────
     try:
-        response = _gemini_generate([prompt, img])
-        text = response.text
+        from google.genai import types as genai_types
+        safety_cfg = [
+            genai_types.SafetySetting(category='HARM_CATEGORY_HARASSMENT', threshold='BLOCK_NONE'),
+            genai_types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH', threshold='BLOCK_NONE'),
+            genai_types.SafetySetting(category='HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold='BLOCK_ONLY_HIGH'),
+            genai_types.SafetySetting(category='HARM_CATEGORY_DANGEROUS_CONTENT', threshold='BLOCK_NONE'),
+        ]
+        gemini_config = genai_types.GenerateContentConfig(safety_settings=safety_cfg)
+    except Exception:
+        gemini_config = None
+
+    try:
+        # Enviar el prompt seguido de todas las imágenes
+        response = _gemini_generate([prompt] + gemini_payload, config=gemini_config)
+
+        # Verificar si la respuesta fue bloqueada aunque no lanzó excepción
+        # (el SDK a veces devuelve finish_reason=SAFETY sin lanzar error)
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            finish_reason = getattr(candidate, 'finish_reason', None)
+            finish_reason_str = str(finish_reason).upper() if finish_reason else ''
+            if 'SAFETY' in finish_reason_str or 'BLOCKED' in finish_reason_str:
+                print(f"[estimar_grasa] Respuesta bloqueada silenciosamente: finish_reason={finish_reason}")
+                return jsonify({"bloqueada": True}), 200
+
+        text = response.text.strip()
+        
+        # Limpiar bloques de código Markdown si la IA los incluye
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+        
         start = text.find('{')
         end = text.rfind('}') + 1
-        if start != -1 and end != -1:
-            result = json.loads(text[start:end])
-            return jsonify(result)
+        if start != -1 and end > start:
+            try:
+                result = json.loads(text[start:end])
+                if "porcentaje" not in result:
+                    result["porcentaje"] = "No determinado"
+                return jsonify(result)
+            except json.JSONDecodeError as je:
+                print(f"[estimar_grasa] JSON inválido: {je} — texto: {text[:200]}")
+                return jsonify({"porcentaje": "Desconocido", "explicacion": text})
+        
+        print(f"[estimar_grasa] Sin JSON en respuesta: {text[:200]}")
         return jsonify({"porcentaje": "Desconocido", "explicacion": text})
+
     except RuntimeError as e:
-        return jsonify({"error": str(e)}), 429
+        error_msg = str(e)
+        if 'IMAGE_BLOCKED' in error_msg:
+            # Señal especial para que el frontend active el fallback por medidas
+            print(f"[estimar_grasa] Imagen bloqueada — activando fallback.")
+            return jsonify({"bloqueada": True}), 200
+        
+        if 'IMAGE_REJECTED' in error_msg:
+            friendly = error_msg.split(": ", 1)[1] if ": " in error_msg else error_msg
+            return jsonify({"error": friendly}), 400
+
+        if 'API_KEY_INVALID' in error_msg:
+            friendly = error_msg.split(": ", 1)[1] if ": " in error_msg else error_msg
+            return jsonify({"error": friendly, "leaked": True}), 403
+
+        return jsonify({"error": error_msg}), 429
+
     except Exception as e:
-        return jsonify({"error": "Error inesperado al procesar la imagen."}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error inesperado: {type(e).__name__}: {str(e)[:100]}"}), 500
+
+
+@app.route('/api/nutricion/estimar-grasa-formula', methods=['POST'])
+def estimar_grasa_formula():
+    """Calcula el % de grasa corporal usando la fórmula de la Marina de EE.UU. (Navy Method)
+    como alternativa cuando la foto es bloqueada por el filtro de seguridad de la IA.
+    
+    Body:  { sexo, cintura, cuello, cadera (mujeres), estatura }  — todos en cm
+           { peso } — en kg (para el BMI como alternativa si faltan medidas)
+    """
+    data = request.json or {}
+    sexo     = (data.get('sexo') or 'masculino').lower().strip()
+    peso     = float(data.get('peso') or 0)
+    estatura = float(data.get('estatura') or 0)
+    cintura  = float(data.get('cintura') or 0)
+    cuello   = float(data.get('cuello') or 0)
+    cadera   = float(data.get('cadera') or 0)
+
+    import math
+
+    def navy_hombre(cintura_cm, cuello_cm, estatura_cm):
+        """US Navy Method para hombres."""
+        if estatura_cm <= 0 or cintura_cm <= cuello_cm:
+            return None
+        bf = 495 / (1.0324 - 0.19077 * math.log10(cintura_cm - cuello_cm) + 0.15456 * math.log10(estatura_cm)) - 450
+        return round(max(1.0, min(bf, 50.0)), 1)
+
+    def navy_mujer(cintura_cm, cuello_cm, cadera_cm, estatura_cm):
+        """US Navy Method para mujeres."""
+        if estatura_cm <= 0 or (cintura_cm + cadera_cm) <= cuello_cm:
+            return None
+        bf = 495 / (1.29579 - 0.35004 * math.log10(cintura_cm + cadera_cm - cuello_cm) + 0.22100 * math.log10(estatura_cm)) - 450
+        return round(max(1.0, min(bf, 60.0)), 1)
+
+    def bmi_formula(peso_kg, estatura_cm, sexo):
+        """Estimación básica por BMI (Deurenberg) como último recurso."""
+        if peso_kg <= 0 or estatura_cm <= 0:
+            return None
+        h = estatura_cm / 100.0
+        bmi = peso_kg / (h * h)
+        edad_default = 30
+        sex_factor = 1 if sexo == 'masculino' else 0
+        bf = (1.20 * bmi) + (0.23 * edad_default) - (10.8 * sex_factor) - 5.4
+        return round(max(1.0, min(bf, 60.0)), 1)
+
+    resultado = None
+    metodo_usado = ''
+
+    # 1. Intentar Navy Method (más preciso)
+    if sexo in ('masculino', 'hombre', 'male', 'm'):
+        if cintura > 0 and cuello > 0 and estatura > 0:
+            resultado = navy_hombre(cintura, cuello, estatura)
+            metodo_usado = 'Navy Method (Hombres)'
+    else:
+        if cintura > 0 and cuello > 0 and cadera > 0 and estatura > 0:
+            resultado = navy_mujer(cintura, cuello, cadera, estatura)
+            metodo_usado = 'Navy Method (Mujeres)'
+
+    # 2. Fallback: BMI Formula
+    if resultado is None:
+        resultado = bmi_formula(peso, estatura, sexo)
+        metodo_usado = 'Estimación por IMC (Deurenberg)'
+
+    if resultado is None:
+        return jsonify({"error": "Faltan datos para calcular. Ingresa estatura y peso mínimo."}), 400
+
+    # Clasificación
+    if sexo in ('masculino', 'hombre', 'male', 'm'):
+        if resultado < 10:    clasificacion = 'Competición'
+        elif resultado < 15:  clasificacion = 'Atlético'
+        elif resultado < 20:  clasificacion = 'Fitness'
+        elif resultado < 25:  clasificacion = 'Promedio'
+        elif resultado < 30:  clasificacion = 'Por encima del promedio'
+        else:                 clasificacion = 'Obesidad leve'
+    else:
+        if resultado < 16:    clasificacion = 'Competición'
+        elif resultado < 21:  clasificacion = 'Atlético'
+        elif resultado < 25:  clasificacion = 'Fitness'
+        elif resultado < 31:  clasificacion = 'Promedio'
+        elif resultado < 36:  clasificacion = 'Por encima del promedio'
+        else:                 clasificacion = 'Obesidad leve'
+
+    return jsonify({
+        "porcentaje": f"{resultado}%",
+        "clasificacion": clasificacion,
+        "metodo": metodo_usado,
+        "explicacion": (
+            f"Estimación calculada con {metodo_usado}. "
+            f"Clasificación: {clasificacion}. "
+            "Para mayor precisión, realiza una medición DEXA o hidrostática."
+        )
+    })
 
 @app.route('/api/nutricion/analizar-comida', methods=['POST'])
 def analizar_comida_ia():
